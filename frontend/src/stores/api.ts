@@ -16,7 +16,7 @@ export class WebSocketAPI
 	emitter = new EventEmitter();
 	
 	constructor() {
-		this.ws = new WebSocket("ws://localhost:8000");
+		this.ws = new WebSocket("ws://localhost:8000", "rust-websocket");
 
 		this.ws.onclose = ((ev) => {
 			console.warn("WS Closed: ", ev);
@@ -33,7 +33,7 @@ export class WebSocketAPI
 			this.isOk = true;
 		})
 
-		this.ws.onmessage = this.handleMessage;
+		this.ws.onmessage = ((ev) => this.handleMessage(ev));
 	}
 
 	handleMessage(ev: MessageEvent<any>) {

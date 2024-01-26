@@ -1,23 +1,10 @@
-pub mod algorithm;
-
-use std::{
-    collections::HashMap,
-    io::Error as IoError,
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-};
-
-use futures_channel::mpsc::{unbounded, UnboundedSender};
-use futures_util::{future, pin_mut, stream::TryStreamExt, StreamExt};
-
-use tokio::net::{TcpListener, TcpStream};
-use tokio_tungstenite::tungstenite::protocol::Message;
-
-type Tx = UnboundedSender<Message>;
-pub type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
+use std::thread;
+use websocket::sync::Server;
+use websocket::OwnedMessage;
 use serde::{Deserialize, Serialize};
 
 use crate::algorithm::GomokuSolver;
+mod algorithm;
 
 #[derive(Serialize, Deserialize)]
 pub struct WSMessage
@@ -27,69 +14,62 @@ pub struct WSMessage
 	data: serde_json::Value
 }
 
-async fn handle_connection(peer_map: PeerMap, raw_stream: TcpStream, addr: SocketAddr) {
-    println!("Incoming TCP connection from: {}", addr);
+fn main() {
+	let server = Server::bind("localhost:8000").unwrap();
 
-    let ws_stream = tokio_tungstenite::accept_async(raw_stream)
-        .await
-        .expect("Error during the websocket handshake occurred");
-    println!("WebSocket connection established: {}", addr);
-
-    // Insert the write part of this peer to the peer map.
-    let (tx, rx) = unbounded();
-    peer_map.lock().unwrap().insert(addr, tx);
-
-    let (outgoing, incoming) = ws_stream.split();
-
-    let broadcast_incoming = incoming.try_for_each(|msg| {
-		if (msg.is_text()) {
-			let txt = msg.to_text().unwrap();
-			let message: WSMessage = serde_json::from_str(txt).unwrap();
-
-			// println!("Recieved message from {}: subject: {}, id: {}", addr, message.subject, message.requestId.unwrap_or_else(|| "-none-".to_string()));
-
-			if (message.subject == "calculate") {
-				let solver = GomokuSolver::from_ws_msg(&message, addr, &peer_map).unwrap();
-
-				let result = solver.solve().unwrap();
-
-				peer_map.lock().unwrap().get(&addr).unwrap().unbounded_send(Message::Text(
-					serde_json::to_string(&WSMessage{
-						subject: message.subject,
-						requestId: Some(message.requestId.unwrap().clone()),
-						data: serde_json::Value::Number(result.into())
-					}).unwrap()
-			));
+	for request in server.filter_map(Result::ok) {
+		// Spawn a new thread for each connection.
+		thread::spawn(|| {
+			if !request.protocols().contains(&"rust-websocket".to_string()) {
+				request.reject().unwrap();
+				return;
 			}
-		}
 
-        future::ok(())
-    });
+			let mut client = request.use_protocol("rust-websocket").accept().unwrap();
 
-    let receive_from_others = rx.map(Ok).forward(outgoing);
+			let ip = client.peer_addr().unwrap();
 
-    pin_mut!(broadcast_incoming, receive_from_others);
-    future::select(broadcast_incoming, receive_from_others).await;
+			println!("Connection from {}", ip);
 
-    println!("{} disconnected", &addr);
-    peer_map.lock().unwrap().remove(&addr);
-}
+			let message = OwnedMessage::Text("{Hello}".to_string());
+			client.send_message(&message).unwrap();
 
-#[tokio::main]
-async fn main() -> Result<(), IoError> {
-    let addr = "127.0.0.1:8000".to_string();
+			let (mut receiver, mut sender) = client.split().unwrap();
 
-    let state = PeerMap::new(Mutex::new(HashMap::new()));
+			for message in receiver.incoming_messages() {
+				let message = message.unwrap();
 
-    // Create the event loop and TCP listener we'll accept connections on.
-    let try_socket = TcpListener::bind(&addr).await;
-    let listener = try_socket.expect("Failed to bind");
-    println!("Listening on: {}", addr);
+				match message {
+					OwnedMessage::Close(_) => {
+						let message = OwnedMessage::Close(None);
+						sender.send_message(&message).unwrap();
+						println!("Client {} disconnected", ip);
+						return;
+					}
+					OwnedMessage::Ping(ping) => {
+						let message = OwnedMessage::Pong(ping);
+						sender.send_message(&message).unwrap();
+					}
+					OwnedMessage::Text(text) => {
+						let message: WSMessage = serde_json::from_str(&text).unwrap();
 
-    // Let's spawn the handling of each connection in a separate task.
-    while let Ok((stream, addr)) = listener.accept().await {
-        tokio::spawn(handle_connection(state.clone(), stream, addr));
-    }
+						if (message.subject == "calculate") {
+							let mut solver = GomokuSolver::from_ws_msg(&message, &mut sender).unwrap();
 
-    Ok(())
+							let result = solver.solve().unwrap();
+
+							sender.send_message(&OwnedMessage::Text(
+								serde_json::to_string(&WSMessage{
+									requestId: message.requestId,
+									subject: "calculate".to_string(),
+									data: serde_json::Value::Number(result.into())
+								}).unwrap()
+							)).unwrap();
+						}
+					}
+					_ => sender.send_message(&message).unwrap(),
+				}
+			}
+		});
+	}
 }

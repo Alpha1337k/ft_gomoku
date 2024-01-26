@@ -12,3 +12,4 @@ futures-channel = "0.3.30"
 futures-util = "0.3.30"
 serde_json = {version = "1.0.111"}
 serde = { version = "1.0.195", features = ["derive"] }
+websocket = "0.27.0"
