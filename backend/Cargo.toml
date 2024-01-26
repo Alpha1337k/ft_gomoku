@@ -6,3 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+tokio-tungstenite = "0.21.0"
+tokio = { version = "1.35.1", features = ["full"] }
+futures-channel = "0.3.30"
+futures-util = "0.3.30"
+serde_json = {version = "1.0.111"}
+serde = { version = "1.0.195", features = ["derive"] }

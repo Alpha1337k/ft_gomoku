@@ -1,6 +1,6 @@
 import { ref, computed } from "vue";
 import { defineStore } from "pinia";
-import { api } from "./api";
+import { ws } from "./api";
 
 export interface Board {
 	[key: number]: number;
@@ -26,7 +26,7 @@ export const useGameStateStore = defineStore("gameState", () => {
 	async function submitMove(move: number) {
 		currentState.value.moves.push(move);
 
-		const response = await api.post<GameState>("/calculate", currentState.value).then((d) => d.data);
+		const response = await ws.sendMessage<GameState>("calculate", currentState.value);
 
 		currentState.value = response;
 
