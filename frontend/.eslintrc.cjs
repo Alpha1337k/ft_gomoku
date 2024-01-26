@@ -10,12 +10,6 @@ module.exports = {
 		"@vue/eslint-config-prettier/skip-formatting",
 		"prettier",
 	],
-	overrides: [
-		{
-			files: ["cypress/e2e/**/*.{cy,spec}.{js,ts,jsx,tsx}"],
-			extends: ["plugin:cypress/recommended"],
-		},
-	],
 	parserOptions: {
 		ecmaVersion: "latest",
 	},
