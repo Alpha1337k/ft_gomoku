@@ -11,6 +11,8 @@ pub struct GomokuSolver<'a>
 	sender: Option<&'a mut Writer<TcpStream>>,
 }
 
+static mut DEPTHZERO_HITS: usize = 0;
+
 impl GomokuSolver<'_> {
 	pub fn from_ws_msg<'a>(msg: &WSMessage, sender: &'a mut Writer<TcpStream>) -> Result<GomokuSolver<'a>, Error> {
 		let board_raw = msg.data.as_object().unwrap().get("board").unwrap().as_object().unwrap();
@@ -77,16 +79,16 @@ impl GomokuSolver<'_> {
 		let y = 1f32 - ((9.5 - (pos as f32 / 19f32).floor()).abs() / 9.5f32);
 		let x = 1f32 - ((9.5 - (pos % 19) as f32).abs() / 9.5f32);
 
-		return (y + x) / 4f32;
+		return (y + x) / 2f32;
 	}
 
 	fn get_position_scores(board: &Vec<u8>) -> f32 {
 		let mut score = 0.0;
 		
 		for i in 0..board.len() {
-			if (board[i] == 0) {
+			if (board[i] == 1) {
 				score += Self::get_position_score(i);
-			} else if (board[i] == 1) {
+			} else if (board[i] == 0) {
 				score -= Self::get_position_score(i);
 			}
 		}
@@ -99,39 +101,33 @@ impl GomokuSolver<'_> {
 		let mut p1_scores = [0, 0, 0, 0, 0];
 		let mut visited_places = HashSet::<usize>::with_capacity(19 * 19);
 
-		for i in 0..board.len() {
-			if (board[i] == u8::MAX || visited_places.get(&i).is_some()) {
-				continue;
-			}
+		// for i in 0..board.len() {
+		// 	if (board[i] == u8::MAX || visited_places.get(&i).is_some()) {
+		// 		continue;
+		// 	}
 
-			if (board[i] == 0) {
-				Self::get_surround_score(&mut p0_scores, &mut visited_places, i, board);
-			} else if (board[i] == 1) {
-				Self::get_surround_score(&mut p1_scores, &mut visited_places, i, board);
-			}
-		}
+		// 	if (board[i] == 0) {
+		// 		Self::get_surround_score(&mut p0_scores, &mut visited_places, i, board);
+		// 	} else if (board[i] == 1) {
+		// 		Self::get_surround_score(&mut p1_scores, &mut visited_places, i, board);
+		// 	}
+		// }
 
 		let mut score: f32 = Self::get_position_scores(board);
 
-		for i in 0..5 {
-			score += ((p0_scores[i] - p1_scores[i]) as i64 * (i+1) as i64) as f32;
-		}
+		// for i in 0..5 {
+		// 	score += ((p0_scores[i] - p1_scores[i]) as i64 * (i+1) as i64) as f32;
+		// }
 
 		return score;
 	}
 
-	fn get_possible_moves(board: &Vec<u8>, player_idx: u8) -> Vec<(u8, f32)> {
-		let mut rval: Vec<(u8, f32)> = Vec::new();
+	fn get_possible_moves(board: &Vec<u8>) -> Vec<(u8, f32)> {
+		let mut rval: Vec<(u8, f32)> = Vec::with_capacity(19 * 19);
 		
 		for i in 0..board.len() {
 			if (board[i] == u8::MAX) {
-				let mut tmp_board = board.clone();
-
-				tmp_board[i] = player_idx;
-
 				let mut score = Self::get_position_score(i);
-
-				score += Self::get_heuristic(&tmp_board) as f32;
 
 				rval.push((i as u8, score));
 			}
@@ -143,11 +139,20 @@ impl GomokuSolver<'_> {
 	fn minimax(&self, depth: usize, board: &Vec<u8>, mut alpha: f32, mut beta: f32, is_maximizing: bool) -> (f32, Vec<u8>)
 	{
 		let mut moves = Vec::with_capacity(depth);
-		moves.push(u8::MAX);
 
 		if (depth == 0) {
+			unsafe { DEPTHZERO_HITS += 1 };
 			return (Self::get_heuristic(board), moves);
 		}
+
+		moves.push(u8::MAX);
+
+		let mut possible_moves_aggr = Self::get_possible_moves(board);
+		possible_moves_aggr.sort_by(|a, b| b.1.total_cmp(&a.1));
+
+		let mut possible_moves: Vec<usize> = possible_moves_aggr.iter().map(|v| v.0 as usize).collect();
+
+		possible_moves.truncate(30);
 
 		// no moves fallback
 		let mut squares_checked = 0;
@@ -156,13 +161,13 @@ impl GomokuSolver<'_> {
 		{
 			let mut val = -INFINITY;
 
-			for i in 0..board.len() {
+			for i in possible_moves {
 				if (board[i] != u8::MAX) {
 					continue;
 				}
 
-				if (depth > 3) {
-					println!("PGR @D {}: {}", depth, i);
+				if (depth >= 3) {
+					println!("PGR @D {}: {} D0: {}", depth, i, unsafe {DEPTHZERO_HITS});
 				}
 
 				let mut new_board = board.clone();
@@ -177,11 +182,16 @@ impl GomokuSolver<'_> {
 					moves.append(&mut node_result.1);
 				}
 
-				if (val > beta) {
-					break;
+				if (depth == 1) {
+					println!("RES: {} V:{}", node_result.0, val);
 				}
+
 				if (val > alpha) {
 					alpha = val;
+				}
+				if (val > beta) {
+					// println!("BETA BREAK {}", depth);
+					break;
 				}
 			}
 			return (val, moves);
@@ -190,13 +200,13 @@ impl GomokuSolver<'_> {
 		{
 			let mut val = INFINITY;
 
-			for i in 0..board.len() {
+			for i in possible_moves {
 				if (board[i] != u8::MAX) {
 					continue;
 				}
 
-				if (depth > 3) {
-					println!("PGR @D {}: {}", depth, i);
+				if (depth >= 3) {
+					println!("PGR @D {}: {} D0: {}", depth, i, unsafe {DEPTHZERO_HITS});
 				}
 
 				let mut new_board = board.clone();
@@ -205,6 +215,10 @@ impl GomokuSolver<'_> {
 
 				let mut node_result = self.minimax(depth - 1, &new_board, alpha, beta, !is_maximizing);
 
+				if (depth == 1) {
+					println!("RESMIN: {} V:{}", node_result.0, val);
+				}
+
 				if (node_result.0 < val) {
 					val = node_result.0;
 					moves.truncate(1);
@@ -212,11 +226,12 @@ impl GomokuSolver<'_> {
 					moves.append(&mut node_result.1);
 				}
 
-				if (val < alpha) {
-					break;
-				}
 				if (val < beta) {
 					beta = val;
+				}
+				if (val < alpha) {
+					// println!("ALPHA BREAK {}", depth);
+					break;
 				}
 			}
 			return (val, moves);
@@ -226,8 +241,6 @@ impl GomokuSolver<'_> {
 	pub fn solve<'a>(&mut self) -> Result<u8, Error>
 	{
 		let res = self.minimax(6, &self.board, -INFINITY, INFINITY, true);
-
-		println!("MLEN: {}", res.1.len());
 
 		for m in &res.1 {
 			println!("M: {}", m);
