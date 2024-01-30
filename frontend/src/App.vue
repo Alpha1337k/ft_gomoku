@@ -1,6 +1,6 @@
 <template>
 	<div class="bg-black w-screen h-screen font-mono text-white">
-		<div class="container max-w-4xl mx-auto p-8">
+		<div class="container max-w-6xl mx-auto p-8">
 			<h1 class="text-2xl font-semibold">ft_gomoku</h1>
 			<p class="text-sm">By okruitho</p>
 

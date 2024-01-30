@@ -7,7 +7,7 @@ export default {
 	theme: {
 	  extend: {
 		gridTemplateColumns: {
-			'19': 'repeat(19, minmax(0, 1fr))'
+			'19': 'repeat(19, minmax(0, 1fr))',
 		}
 	  },
 	},
