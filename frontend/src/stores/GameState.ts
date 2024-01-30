@@ -29,26 +29,57 @@ export const useGameStateStore = defineStore("gameState", () => {
 		moves: [],
 		predictedMoves: [],
 	});
+	
+	const isEditMode = ref(false);
+
+	async function submitBoard() {
+		
+	}
 
 	async function submitMove(move: number) {
-		currentState.value.board[move] = 0;
-		const move_push = [move];
+		let response = {} as CalculationResponse;
+		if (currentState.value.currentTurn == 1) {
+			currentState.value.board[move] = 1;
+			currentState.value.moves[currentState.value.moves.length - 1].push(move);
+			response = await ws.sendMessage<CalculationResponse>("calculate", currentState.value);
+			console.log(response);
 
-		currentState.value.moves.push(move_push);
+			currentState.value.currentTurn = 0;
+			console.log(response);
+		}
+		else {
+			currentState.value.board[move] = 0;
+			const move_push = [move];
+	
+			currentState.value.moves.push(move_push);
+			currentState.value.currentTurn = 1;
 
-		const response = await ws.sendMessage<CalculationResponse>("calculate", currentState.value);
-		const aiMove = response.moves.pop()!;
+	
+			response = await ws.sendMessage<CalculationResponse>("calculate", currentState.value);
+			console.log(response);
+			const aiMove = response.moves.shift()!;
+	
+			if (aiMove) {
+				move_push.push(aiMove);
+				currentState.value.board[aiMove] = 1;
+				currentState.value.currentTurn = 0;
+			}
+		}
 
-		currentState.value.board[aiMove] = 1;
+		if (response.score == 1234) {
+			currentState.value.score = Infinity;
+		} else if (response.score == -1234) {
+			currentState.value.score = -Infinity;
+		} else {
+			currentState.value.score = response.score;
+		}
 
-		currentState.value.score = response.score;
 		currentState.value.predictedMoves = response.moves;
-		move_push.push(aiMove);
 
 		return response;
 	}
 
-	return { currentState, stateHistory, submitMove };
+	return { currentState, stateHistory, submitMove, isEditMode };
 });
 
 export function getHumanPosition(pos: number) {

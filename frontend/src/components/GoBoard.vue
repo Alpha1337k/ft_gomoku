@@ -32,7 +32,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import type { Board } from "@/stores/GameState";
+import { useGameStateStore, type Board } from "@/stores/GameState";
 
 const hoverPos = ref<number>();
 
@@ -41,10 +41,12 @@ const props = defineProps<{
 	isLoading: boolean;
 }>();
 
+const gameState = useGameStateStore();
+
 const emit = defineEmits(["moveChosen"]);
 
 function handleClick(pos: number) {
-	if (props.boardPositions[pos] == undefined) {
+	if (props.boardPositions[pos] == undefined && gameState.isEditMode == false) {
 		emit("moveChosen", pos);
 	}
 }

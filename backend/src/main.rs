@@ -14,6 +14,13 @@ pub struct WSMessage
 	data: serde_json::Value
 }
 
+#[derive(Serialize, Deserialize)]
+struct CalculationResponse
+{
+	moves: Vec<usize>,
+	score: f32,
+}
+
 fn main() {
 	let server = Server::bind("localhost:8000").unwrap();
 
@@ -30,9 +37,6 @@ fn main() {
 			let ip = client.peer_addr().unwrap();
 
 			println!("Connection from {}", ip);
-
-			let message = OwnedMessage::Text("{Hello}".to_string());
-			client.send_message(&message).unwrap();
 
 			let (mut receiver, mut sender) = client.split().unwrap();
 
@@ -56,13 +60,26 @@ fn main() {
 						if (message.subject == "calculate") {
 							let mut solver = GomokuSolver::from_ws_msg(&message, &mut sender).unwrap();
 
-							let result = solver.solve().unwrap();
+							let mut result = solver.solve().unwrap();
+
+							// json not supporting infinity. Using magic numbers
+							if (result.0.is_infinite()) {
+								if (result.0.is_sign_negative()) {
+									result.0 = -1234.00;
+								}
+								else {
+									result.0 = 1234.00;
+								}
+							}
 
 							sender.send_message(&OwnedMessage::Text(
 								serde_json::to_string(&WSMessage{
 									requestId: message.requestId,
 									subject: "calculate".to_string(),
-									data: serde_json::Value::Number(result.into())
+									data: serde_json::to_value(CalculationResponse{
+										score: result.0,
+										moves: result.1,
+									}).unwrap()
 								}).unwrap()
 							)).unwrap();
 						}

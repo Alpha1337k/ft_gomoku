@@ -1,5 +1,5 @@
 <template>
-	<div class="bg-slate-800 w-96 rounded-lg">
+	<div class="bg-slate-800 w-96 rounded-lg flex flex-col">
 		<div class="bg-slate-900 p-4 rounded-t-lg border-slate-900 border-lg">
 			<h2 v-if="gameState.currentState.moves.length == 0" class="font-semibold">Move to get started</h2>
 			<h2 v-else-if="gameState.currentState.score < 0" class="bg-slate-950 min-w-10 max-w-20 w-fit rounded text-sm px-1 text-slate-300">
@@ -20,7 +20,7 @@
 				<div class="text-slate-800 mx-2" v-if="i % 2 == 1">|</div>
 			</div>
 		</div>
-		<div class="space-y-2 my-2">
+		<div class="space-y-2 my-2 flex-1">
 			<div v-for="(moves, i) in gameState.currentState.moves" :key="i" class="flex justify-start text-sm px-4 text-slate-200">
 				<p class="text-slate-500 w-6">{{ i }}.</p>
 				<p class="w-10 px-1" :class="moves[1] == undefined ? 'bg-slate-600 rounded border-b-4 border-slate-500' : ''">
@@ -34,6 +34,11 @@
 					{{ getHumanPosition(moves[1]) }}
 				</p>
 			</div>
+		</div>
+		<div class="h-20">
+			<button @click="gameState.isEditMode = !gameState.isEditMode" >
+				{{ gameState.isEditMode ? "EDITING" : "EDIT" }}
+			</button>
 		</div>
 	</div>
 </template>
