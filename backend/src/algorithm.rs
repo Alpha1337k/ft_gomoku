@@ -1,6 +1,6 @@
-use std::{char::MAX, cmp::{max, max_by}, collections::{HashMap, HashSet}, f32::INFINITY, io::Error, net::{SocketAddr, TcpStream}, thread::sleep, time::{Duration, SystemTime}};
+use std::{collections::{HashMap, HashSet}, f32::INFINITY, io::Error, net::{TcpStream}};
 
-use websocket::{sync::Writer, OwnedMessage};
+use websocket::{sync::Writer};
 
 use crate::{WSMessage};
 
@@ -46,7 +46,7 @@ impl GomokuSolver<'_> {
 		let mut position_set = HashMap::<usize, f32>::with_capacity(64);
 
 		for i in 0..board.len() {
-			if (board[i] != usize::MAX) {
+			if board[i] != usize::MAX {
 				for y in -1i32..2 {
 					for x in -1i32..2 {
 						let pos = i as i32 + (19 * y) + x;
@@ -58,7 +58,7 @@ impl GomokuSolver<'_> {
 						{
 							continue;
 						}
-						if (board[pos as usize] == usize::MAX && position_set.contains_key(&(pos as usize)) == false) {
+						if board[pos as usize] == usize::MAX && position_set.contains_key(&(pos as usize)) == false {
 							position_set.insert(pos as usize, Self::get_position_score(pos as usize));
 						}
 					}
@@ -79,19 +79,17 @@ impl GomokuSolver<'_> {
 		let mut len = 0;
 		loop {
 			let old_idx = idx;
-			idx += (y * 19 + x);
+			idx += y * 19 + x;
 
-			if (
-				idx >= 19 * 19 || 
+			if idx >= 19 * 19 || 
 				idx < 0 || 
 				(old_idx % 19 == 18 && idx % 19 == 0) ||
-				(old_idx % 19 == 0 && idx % 19 == 18)
-			) {
+				(old_idx % 19 == 0 && idx % 19 == 18) {
 				return (len, true);
 			}
 
-			if (board[idx as usize] != board[start_idx]) {
-				if (board[idx as usize] == usize::MAX) {
+			if board[idx as usize] != board[start_idx] {
+				if board[idx as usize] == usize::MAX {
 					return (len, false);
 				}
 				return (len, true);
@@ -113,7 +111,7 @@ impl GomokuSolver<'_> {
 
 		let mut total_score = 0.0;
 
-		for (i, direction) in coords.iter().enumerate() {
+		for (_i, direction) in coords.iter().enumerate() {
 			let score_1 = Self::get_score(direction[0][0], direction[0][1], start_idx, board, visited_places);
 			let score_2 = Self::get_score(direction[1][0], direction[1][1], start_idx, board, visited_places);
 
@@ -121,17 +119,17 @@ impl GomokuSolver<'_> {
 			let mut score: f32 = length as f32;
 
 
-			if (length >= 5) {
+			if length >= 5 {
 				return INFINITY;
 			}
 
 			score *= length as f32;
 
-			if (score_1.1 == false && score_2.1 == false) {
+			if score_1.1 == false && score_2.1 == false {
 				score *= 1.4;
 			}
 
-			else if (score_1.1 == true && score_2.1 == true) {
+			else if score_1.1 == true && score_2.1 == true {
 				score = 0.0;
 			}
 
@@ -152,9 +150,9 @@ impl GomokuSolver<'_> {
 		let mut score = 0.0;
 		
 		for i in 0..board.len() {
-			if (board[i] == MAXIMIZING) {
+			if board[i] == MAXIMIZING {
 				score += Self::get_position_score(i);
-			} else if (board[i] == MINIMIZING) {
+			} else if board[i] == MINIMIZING {
 				score -= Self::get_position_score(i);
 			}
 		}
@@ -168,23 +166,23 @@ impl GomokuSolver<'_> {
 		let mut visited_places = HashSet::<usize>::with_capacity(19 * 19);
 
 		for i in 0..board.len() {
-			if (minimizing_score == INFINITY || maximizing_score == INFINITY) {
+			if minimizing_score == INFINITY || maximizing_score == INFINITY {
 				return maximizing_score - minimizing_score;
 			}
 
-			if (board[i] == usize::MAX || visited_places.get(&i).is_some()) {
+			if board[i] == usize::MAX || visited_places.get(&i).is_some() {
 				continue;
 			}
-			if (board[i] == MAXIMIZING) {
+			if board[i] == MAXIMIZING {
 				maximizing_score = Self::get_surround_score(&mut visited_places, i, board);
-			} else if (board[i] == MINIMIZING) {
+			} else if board[i] == MINIMIZING {
 				minimizing_score = Self::get_surround_score(&mut visited_places, i, board);
 			}
 		}
 
 		let mut score: f32 = Self::get_position_scores(board);
 
-		score += (maximizing_score - minimizing_score);
+		score += maximizing_score - minimizing_score;
 
 		return score;
 	}
@@ -194,12 +192,12 @@ impl GomokuSolver<'_> {
 		let mut moves = Vec::with_capacity(depth);
 		let heuristic = Self::get_heuristic(board);
 
-		if (depth == 0 || heuristic.is_infinite()) {
+		if depth == 0 || heuristic.is_infinite() {
 			unsafe { DEPTHZERO_HITS += 1 };
 			return (heuristic, moves);
 		}
 
-		let mut possible_moves = Self::get_possible_moves(board);
+		let possible_moves = Self::get_possible_moves(board);
 
 		moves.push(usize::MAX);
 
@@ -208,18 +206,18 @@ impl GomokuSolver<'_> {
 		// possible_moves.truncate(80);
 
 		// no moves fallback
-		let mut squares_checked = 0;
+		let _squares_checked = 0;
 
-		if (is_maximizing)
+		if is_maximizing
 		{
 			let mut val = -INFINITY;
 
 			for i in possible_moves {
-				if (board[i] != usize::MAX) {
+				if board[i] != usize::MAX {
 					continue;
 				}
 
-				if (depth >= 3) {
+				if depth >= 3 {
 					println!("PGR @D {}: {} D0: {}", depth, i, unsafe {DEPTHZERO_HITS});
 				}
 
@@ -228,17 +226,17 @@ impl GomokuSolver<'_> {
 				new_board[i] = MAXIMIZING;
 
 				let mut node_result = self.minimax(depth - 1, &new_board, alpha, beta, !is_maximizing);
-				if (node_result.0 > val) {
+				if node_result.0 > val {
 					val = node_result.0;
 					moves.truncate(1);
 					moves[0] = i;
 					moves.append(&mut node_result.1);
 				}
 
-				if (val > alpha) {
+				if val > alpha {
 					alpha = val;
 				}
-				if (val > beta) {
+				if val > beta {
 					// println!("BETA BREAK {}", depth);
 					break;
 				}
@@ -250,11 +248,11 @@ impl GomokuSolver<'_> {
 			let mut val = INFINITY;
 
 			for i in possible_moves {
-				if (board[i] != usize::MAX) {
+				if board[i] != usize::MAX {
 					continue;
 				}
 
-				if (depth >= 3) {
+				if depth >= 3 {
 					println!("PGR @D {}: {} D0: {}", depth, i, unsafe {DEPTHZERO_HITS});
 				}
 
@@ -266,17 +264,17 @@ impl GomokuSolver<'_> {
 
 				// println!("RES: pos: {} V:{}", get_human_pos_name(i as u8), node_result.0);
 
-				if (node_result.0 < val) {
+				if node_result.0 < val {
 					val = node_result.0;
 					moves.truncate(1);
 					moves[0] = i;
 					moves.append(&mut node_result.1);
 				}
 
-				if (val < beta) {
+				if val < beta {
 					beta = val;
 				}
-				if (val < alpha) {
+				if val < alpha {
 					// println!("ALPHA BREAK {}", depth);
 					break;
 				}

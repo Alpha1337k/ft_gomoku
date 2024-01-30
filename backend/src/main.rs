@@ -32,7 +32,7 @@ fn main() {
 				return;
 			}
 
-			let mut client = request.use_protocol("rust-websocket").accept().unwrap();
+			let client = request.use_protocol("rust-websocket").accept().unwrap();
 
 			let ip = client.peer_addr().unwrap();
 
@@ -57,14 +57,14 @@ fn main() {
 					OwnedMessage::Text(text) => {
 						let message: WSMessage = serde_json::from_str(&text).unwrap();
 
-						if (message.subject == "calculate") {
+						if message.subject == "calculate" {
 							let mut solver = GomokuSolver::from_ws_msg(&message, &mut sender).unwrap();
 
 							let mut result = solver.solve().unwrap();
 
 							// json not supporting infinity. Using magic numbers
-							if (result.0.is_infinite()) {
-								if (result.0.is_sign_negative()) {
+							if result.0.is_infinite() {
+								if result.0.is_sign_negative() {
 									result.0 = -1234.00;
 								}
 								else {
