@@ -47,8 +47,6 @@ export class WebSocketAPI {
 
 		const subject = `${data.subject}${data.requestId ? ":" + data.requestId : ""}`;
 
-		console.log("SUBJECT", subject, data.data);
-
 		this.emitter.emit(subject, data.data);
 	}
 
@@ -60,6 +58,12 @@ export class WebSocketAPI {
 		}
 
 		const requestId = uuid();
+
+		console.log("OUT", {
+			subject,
+			requestId,
+			data: message
+		});
 
 		this.ws.send(
 			JSON.stringify({
@@ -76,7 +80,7 @@ export class WebSocketAPI {
 			}, 120_000);
 
 			const listener = this.emitter.once(`${subject}:${requestId}`, (e) => {
-				console.log("INPUT");
+				console.log("IN", e);
 				clearTimeout(timeout);
 				res(e);
 			});

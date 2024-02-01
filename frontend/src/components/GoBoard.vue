@@ -20,6 +20,7 @@
 					@mouseover="hoverPos = i - 1"
 					@mouseleave="hoverPos = undefined"
 					@click="handleClick($event, i - 1)"
+					@contextmenu.prevent="handleRightClick(i - 1)"
 				>
 					<div v-if="boardPositions[i - 1] === 0" class="rounded-xl bg-blue-800 h-5/6 w-5/6"></div>
 					<div v-else-if="boardPositions[i - 1] === 1" class="rounded-xl bg-red-800 h-5/6 w-5/6"></div>
@@ -76,6 +77,13 @@ onUnmounted(() => {
 	document.removeEventListener("keydown", updateAlt)
 	document.removeEventListener("keyup", updateAlt)
 });
+
+function handleRightClick(pos: number) {
+	if (gameState.isEditMode) {
+		props.boardPositions[pos] = undefined;
+		gameState.submitEdit();
+	}
+}
 
 function handleClick(event: PointerEvent, pos: number) {
 	

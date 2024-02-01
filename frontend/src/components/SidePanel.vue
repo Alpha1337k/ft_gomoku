@@ -37,10 +37,10 @@
 		</div>
 		<div class="h-64 bg-slate-900 rounded-b-lg flex flex-col">
 			<div class="flex divide-x divide-slate-500">
-				<button @click="gameState.isEditMode = false" :class="{'bg-slate-700': !gameState.isEditMode}" class="hover:bg-slate-700 w-full  cursor-pointer p-2">
+				<button @click="gameState.isEditMode = false; gameState.editState = {}" :class="{'bg-slate-700': !gameState.isEditMode}" class="hover:bg-slate-700 w-full  cursor-pointer p-2">
 					Play
 				</button>
-				<button @click="gameState.isEditMode = true" :class="{'bg-slate-700': gameState.isEditMode}" class="hover:bg-slate-700 w-full  cursor-pointer p-2">
+				<button @click="gameState.isEditMode = true; gameState.submitEdit()" :class="{'bg-slate-700': gameState.isEditMode}" class="hover:bg-slate-700 w-full  cursor-pointer p-2">
 					Edit
 				</button>
 			</div>
@@ -50,6 +50,10 @@
 				</Slider>
 				<div>
 					<p>Board d0 evaluation: {{ gameState.editState?.boardScore?.toFixed(4) ?? "?" }}</p>
+				</div>
+				<div class="flex justify-between">
+					<p>View prio for player 1?</p>
+					<input type="checkbox" v-model="gameState.editSettings.is_maximizing" @change="gameState.submitEdit()"/>
 				</div>
 			</div>
 			<button @click="gameState.currentState.board = {}; gameState.submitEdit()" :class="{'bg-slate-700': !gameState.isEditMode}" class="hover:bg-slate-700 w-full bg-slate-700  cursor-pointer p-2">

@@ -1,10 +1,12 @@
-use std::thread;
+use std::{collections::HashMap, thread};
+use serde_json::json;
 use websocket::sync::Server;
 use websocket::OwnedMessage;
 use serde::{Deserialize, Serialize};
 
 use crate::algorithm::GomokuSolver;
 mod algorithm;
+mod move_fetcher;
 
 #[derive(Serialize, Deserialize)]
 pub struct WSMessage
@@ -28,6 +30,18 @@ struct EvaluationResponse
 	boardScore: f32,
 }
 
+// json not supporting infinity. Using magic numbers
+fn resolve_infinity(val: f32) -> f32 {
+	if val.is_infinite() {
+		if val.is_sign_negative() {
+			return -1234.00;
+		}
+		else {
+			return 1234.00;
+		}
+	}
+	return val;
+}
 
 fn main() {
 	let server = Server::bind("localhost:8000").unwrap();
@@ -70,22 +84,12 @@ fn main() {
 
 							let mut result = solver.solve().unwrap();
 
-							// json not supporting infinity. Using magic numbers
-							if result.0.is_infinite() {
-								if result.0.is_sign_negative() {
-									result.0 = -1234.00;
-								}
-								else {
-									result.0 = 1234.00;
-								}
-							}
-
 							sender.send_message(&OwnedMessage::Text(
 								serde_json::to_string(&WSMessage{
 									requestId: message.requestId,
 									subject: "calculate".to_string(),
 									data: serde_json::to_value(CalculationResponse{
-										score: result.0,
+										score: resolve_infinity(result.0),
 										moves: result.1,
 									}).unwrap()
 								}).unwrap()
@@ -93,8 +97,9 @@ fn main() {
 						} else if message.subject == "evaluate" {
 							let solver = GomokuSolver::from_ws_msg(&message, &mut sender).unwrap();
 
-							let board_score = GomokuSolver::get_position_scores(&solver.board);
-							let moves = GomokuSolver::get_possible_moves(&solver.board);
+							let board_score = GomokuSolver::get_heuristic(&solver.board);
+							let moves = GomokuSolver::get_possible_moves(&solver.board, 
+								message.data.get("is_maximizing").unwrap_or(&json!(true)).as_bool().unwrap());
 
 							println!("Evaluating done");
 
@@ -103,8 +108,8 @@ fn main() {
 									requestId: message.requestId,
 									subject: "evaluate".to_string(),
 									data: serde_json::to_value(EvaluationResponse{
-										boardScore: board_score,
-										evalPrio: moves
+										boardScore: resolve_infinity(board_score),
+										evalPrio: moves.iter().map(|f| f.0).collect()
 									}).unwrap()
 								}).unwrap()
 							)).unwrap();
