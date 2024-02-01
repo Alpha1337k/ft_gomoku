@@ -35,9 +35,25 @@
 				</p>
 			</div>
 		</div>
-		<div class="h-20">
-			<button @click="gameState.isEditMode = !gameState.isEditMode" >
-				{{ gameState.isEditMode ? "EDITING" : "EDIT" }}
+		<div class="h-64 bg-slate-900 rounded-b-lg flex flex-col">
+			<div class="flex divide-x divide-slate-500">
+				<button @click="gameState.isEditMode = false" :class="{'bg-slate-700': !gameState.isEditMode}" class="hover:bg-slate-700 w-full  cursor-pointer p-2">
+					Play
+				</button>
+				<button @click="gameState.isEditMode = true" :class="{'bg-slate-700': gameState.isEditMode}" class="hover:bg-slate-700 w-full  cursor-pointer p-2">
+					Edit
+				</button>
+			</div>
+			<div class="p-2 flex-1">
+				<Slider :max="6" :min="0" v-model="gameState.depth">
+					Depth ({{ gameState.depth }})
+				</Slider>
+				<div>
+					<p>Board d0 evaluation: {{ gameState.editState?.boardScore?.toFixed(4) ?? "?" }}</p>
+				</div>
+			</div>
+			<button @click="gameState.currentState.board = {}; gameState.submitEdit()" :class="{'bg-slate-700': !gameState.isEditMode}" class="hover:bg-slate-700 w-full bg-slate-700  cursor-pointer p-2">
+					Reset
 			</button>
 		</div>
 	</div>
@@ -45,6 +61,7 @@
 
 <script setup lang="ts">
 import { getHumanPosition, useGameStateStore } from "@/stores/GameState";
+import Slider from "@/components/Slider.vue";
 
 const gameState = useGameStateStore();
 

@@ -19,11 +19,15 @@
 					class="cursor-pointer flex items-center justify-center"
 					@mouseover="hoverPos = i - 1"
 					@mouseleave="hoverPos = undefined"
-					@click="handleClick(i - 1)"
+					@click="handleClick($event, i - 1)"
 				>
 					<div v-if="boardPositions[i - 1] === 0" class="rounded-xl bg-blue-800 h-5/6 w-5/6"></div>
 					<div v-else-if="boardPositions[i - 1] === 1" class="rounded-xl bg-red-800 h-5/6 w-5/6"></div>
-					<div v-else-if="hoverPos == i - 1" class="rounded-xl bg-blue-800/75 h-5/6 w-5/6"></div>
+					<div v-else-if="hoverPos == i - 1 && ctrlPressed == false" class="rounded-xl bg-blue-800/75 h-5/6 w-5/6"></div>
+					<div v-else-if="hoverPos == i - 1 && ctrlPressed == true" class="rounded-xl bg-red-800/75 h-5/6 w-5/6"></div>
+					<div v-else="evalPrioMap[i -1 ] != undefined" class="h-5/6 w-5/6">
+							<p class="text-white h-10 mx-auto text-center">{{ evalPrioMap[i -1 ] }}</p>
+					</div>			
 				</div>
 			</div>
 		</div>
@@ -31,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, onUnmounted, ref } from "vue";
 import { useGameStateStore, type Board } from "@/stores/GameState";
 
 const hoverPos = ref<number>();
@@ -44,9 +48,52 @@ const props = defineProps<{
 const gameState = useGameStateStore();
 
 const emit = defineEmits(["moveChosen"]);
+const ctrlPressed = ref(false);
 
-function handleClick(pos: number) {
-	if (props.boardPositions[pos] == undefined && gameState.isEditMode == false) {
+const evalPrioMap = computed(() => {
+	const mapped: {[key: number]: number} = {}
+
+	if (gameState.isEditMode && gameState.editState?.evalPrio) {
+		for (let i = 0; i < gameState.editState.evalPrio.length; i++) {
+			mapped[gameState.editState.evalPrio[i]] = i;
+		}
+	}
+	return mapped;
+})
+
+function updateAlt(e: KeyboardEvent) {
+	if (e.ctrlKey && gameState.isEditMode) {
+		ctrlPressed.value = true;
+	} else {
+		ctrlPressed.value = false;
+	}
+}
+
+document.addEventListener("keydown", updateAlt);
+document.addEventListener("keyup", updateAlt);
+
+onUnmounted(() => {
+	document.removeEventListener("keydown", updateAlt)
+	document.removeEventListener("keyup", updateAlt)
+});
+
+function handleClick(event: PointerEvent, pos: number) {
+	
+	if (gameState.isEditMode) {
+		if (event.ctrlKey) {
+			props.boardPositions[pos] = 1;
+		} else {
+			props.boardPositions[pos] = 0;
+		}
+
+		gameState.submitEdit();
+	}
+	
+	if (props.boardPositions[pos] != undefined) {
+		return;
+	}
+	
+	if (gameState.isEditMode == false) {
 		emit("moveChosen", pos);
 	}
 }

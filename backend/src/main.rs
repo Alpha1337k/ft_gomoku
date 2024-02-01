@@ -21,6 +21,14 @@ struct CalculationResponse
 	score: f32,
 }
 
+#[derive(Serialize, Deserialize)]
+struct EvaluationResponse
+{
+	evalPrio: Vec<usize>,
+	boardScore: f32,
+}
+
+
 fn main() {
 	let server = Server::bind("localhost:8000").unwrap();
 
@@ -79,6 +87,24 @@ fn main() {
 									data: serde_json::to_value(CalculationResponse{
 										score: result.0,
 										moves: result.1,
+									}).unwrap()
+								}).unwrap()
+							)).unwrap();
+						} else if message.subject == "evaluate" {
+							let solver = GomokuSolver::from_ws_msg(&message, &mut sender).unwrap();
+
+							let board_score = GomokuSolver::get_position_scores(&solver.board);
+							let moves = GomokuSolver::get_possible_moves(&solver.board);
+
+							println!("Evaluating done");
+
+							sender.send_message(&OwnedMessage::Text(
+								serde_json::to_string(&WSMessage{
+									requestId: message.requestId,
+									subject: "evaluate".to_string(),
+									data: serde_json::to_value(EvaluationResponse{
+										boardScore: board_score,
+										evalPrio: moves
 									}).unwrap()
 								}).unwrap()
 							)).unwrap();

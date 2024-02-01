@@ -11,7 +11,7 @@
 					:is-loading="false"
 					class="border border-slate-800 rounded-lg"
 				/>
-				<MoveHistory />
+				<SidePanel />
 			</div>
 		</div>
 	</div>
@@ -19,7 +19,7 @@
 
 <script setup lang="ts">
 import GoBoard from "@/components/GoBoard.vue";
-import MoveHistory from "@/components/MoveHistory.vue";
+import SidePanel from "@/components/SidePanel.vue";
 import { useGameStateStore } from "./stores/GameState";
 import { ref } from "vue";
 

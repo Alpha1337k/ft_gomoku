@@ -1,12 +1,13 @@
 use std::{collections::{HashMap, HashSet}, f32::INFINITY, io::Error, net::{TcpStream}};
 
+use serde_json::json;
 use websocket::{sync::Writer};
 
 use crate::{WSMessage};
 
 pub struct GomokuSolver<'a>
 {
-	board: Vec<usize>,
+	pub board: Vec<usize>,
 	turn_idx: u8,
 	sender: Option<&'a mut Writer<TcpStream>>,
 }
@@ -29,7 +30,7 @@ impl GomokuSolver<'_> {
 
 		let mut solver = GomokuSolver{
 			board: vec![usize::MAX; 19 * 19],
-			turn_idx: msg.data.as_object().unwrap().get("currentTurn").unwrap().as_i64().unwrap() as u8,
+			turn_idx: msg.data.as_object().unwrap().get("currentTurn").unwrap_or(&json!(0)).as_i64().unwrap() as u8,
 			sender: Some(sender),
 		};
 		
@@ -41,7 +42,7 @@ impl GomokuSolver<'_> {
 		return Ok(solver);
 	}
 
-	fn get_possible_moves(board: &Vec<usize>) -> Vec<usize>
+	pub fn get_possible_moves(board: &Vec<usize>) -> Vec<usize>
 	{
 		let mut position_set = HashMap::<usize, f32>::with_capacity(64);
 
@@ -146,7 +147,7 @@ impl GomokuSolver<'_> {
 		return (y + x) / 2f32;
 	}
 
-	fn get_position_scores(board: &Vec<usize>) -> f32 {
+	pub fn get_position_scores(board: &Vec<usize>) -> f32 {
 		let mut score = 0.0;
 		
 		for i in 0..board.len() {

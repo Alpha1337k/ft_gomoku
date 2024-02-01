@@ -9,30 +9,37 @@ interface MessageBody {
 }
 
 export class WebSocketAPI {
-	private ws;
+	private ws!: WebSocket;
 	isOk = false;
 
 	emitter = new EventEmitter();
 
-	constructor() {
+	initWebsocket(cb: (result: boolean) => void) {
 		this.ws = new WebSocket("ws://localhost:8000", "rust-websocket");
 
 		this.ws.onclose = (ev) => {
 			console.warn("WS Closed: ", ev);
 			this.isOk = false;
+			cb(false);
 		};
 
 		this.ws.onerror = (ev): void => {
 			console.warn("WS Error: ", ev);
 			this.isOk = false;
+			cb(false);
 		};
 
 		this.ws.onopen = (ev) => {
 			console.warn("WS Open: ", ev);
 			this.isOk = true;
+			cb(true);
 		};
 
 		this.ws.onmessage = (ev) => this.handleMessage(ev);
+	}
+
+	constructor() {
+		this.initWebsocket(() => {});
 	}
 
 	handleMessage(ev: MessageEvent<any>) {
@@ -47,7 +54,9 @@ export class WebSocketAPI {
 
 	async sendMessage<T = unknown>(subject: string, message: unknown): Promise<T> {
 		if (this.isOk == false) {
-			throw new Error("WS is not ready");
+			let reconnectResult: boolean = await new Promise((res) => this.initWebsocket(res));
+			if (reconnectResult == false)
+				throw new Error("WS is not ready");
 		}
 
 		const requestId = uuid();

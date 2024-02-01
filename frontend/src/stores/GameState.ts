@@ -14,6 +14,11 @@ export interface GameState {
 	predictedMoves: number[];
 }
 
+export interface EvalState {
+	boardScore: number
+	evalPrio: number[]
+}
+
 export interface CalculationResponse {
 	moves: number[];
 	score: number;
@@ -29,11 +34,19 @@ export const useGameStateStore = defineStore("gameState", () => {
 		moves: [],
 		predictedMoves: [],
 	});
+
+	const depth = ref(4);
 	
 	const isEditMode = ref(false);
 
-	async function submitBoard() {
-		
+	const editState = ref<Partial<EvalState>>();
+
+	async function submitEdit() {
+		const response = await ws.sendMessage<EvalState>("evaluate", {
+			board: currentState.value.board
+		});
+
+		editState.value = response;
 	}
 
 	async function submitMove(move: number) {
@@ -79,7 +92,7 @@ export const useGameStateStore = defineStore("gameState", () => {
 		return response;
 	}
 
-	return { currentState, stateHistory, submitMove, isEditMode };
+	return { currentState, stateHistory, submitMove, isEditMode, depth, submitEdit, editState };
 });
 
 export function getHumanPosition(pos: number) {
