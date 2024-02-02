@@ -1,4 +1,5 @@
 use std::{collections::HashMap, thread};
+use board::Position;
 use serde_json::json;
 use websocket::sync::Server;
 use websocket::OwnedMessage;
@@ -7,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use crate::algorithm::GomokuSolver;
 mod algorithm;
 mod move_fetcher;
+mod board;
+mod heuristic;
 
 #[derive(Serialize, Deserialize)]
 pub struct WSMessage
@@ -19,14 +22,14 @@ pub struct WSMessage
 #[derive(Serialize, Deserialize)]
 struct CalculationResponse
 {
-	moves: Vec<usize>,
+	moves: Vec<u64>,
 	score: f32,
 }
 
 #[derive(Serialize, Deserialize)]
 struct EvaluationResponse
 {
-	evalPrio: Vec<usize>,
+	evalPrio: Vec<u64>,
 	boardScore: f32,
 }
 
@@ -90,7 +93,7 @@ fn main() {
 									subject: "calculate".to_string(),
 									data: serde_json::to_value(CalculationResponse{
 										score: resolve_infinity(result.0),
-										moves: result.1,
+										moves: result.1.iter().map(|x| x.to_u64()).collect(),
 									}).unwrap()
 								}).unwrap()
 							)).unwrap();
@@ -109,7 +112,7 @@ fn main() {
 									subject: "evaluate".to_string(),
 									data: serde_json::to_value(EvaluationResponse{
 										boardScore: resolve_infinity(board_score),
-										evalPrio: moves.iter().map(|f| f.0).collect()
+										evalPrio: moves.iter().map(|f| f.0.to_u64()).collect()
 									}).unwrap()
 								}).unwrap()
 							)).unwrap();
