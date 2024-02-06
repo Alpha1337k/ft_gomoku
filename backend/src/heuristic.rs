@@ -1,15 +1,134 @@
-use crate::board::{Board, Position};
+use std::{cell::Ref, collections::{HashMap, HashSet}, f32::INFINITY};
+
+use crate::board::{Board, Piece, PieceWrap, Position};
+
+const B0_SCORES: [f32; 6] = [
+	0.0,
+	2.0,
+	4.0,
+	8.0,
+	16.0,
+	INFINITY
+];
+
+const B1_SCORES: [f32; 6] = [
+	0.0,
+	2.0,
+	3.0,
+	4.0,
+	5.0,
+	INFINITY
+];
+
+const B2_SCORES: [f32; 6] = [
+	0.0,
+	0.0,
+	0.0,
+	0.0,
+	0.0,
+	INFINITY
+];
 
 
+#[derive(Clone, PartialEq, Eq, Hash)]
+enum Direction {
+	X,
+	Y,
+	TLBR,
+	BLTR
+}
+
+struct LineResult {
+	end: Position,
+	length: usize,
+	blocked: bool,
+}
+
+#[derive(Clone)]
+struct Line {
+	id: usize,
+	start: Position,
+	end: Position,
+	length: usize,
+	direction: u8,
+	score: f32,
+	block_pos: u8,
+	player: Piece
+}
+
+impl Line {
+	pub fn new(idx: usize, player: Piece, blocks: u8, start: Position, end: Position, direction: u8, length: usize) -> Line {
+		Line {
+			id: idx,
+			start: start,
+			end: end,
+			player: player,
+			block_pos: blocks,
+			direction: direction,
+			length: length,
+			score: Self::calculate(blocks, length)
+		}
+	}
+
+	pub fn calculate(blocks: u8, length: usize) -> f32 {
+		match blocks {
+			0 => B0_SCORES[length.min(5)],
+			1 => B1_SCORES[length.min(5)],
+			2 => B1_SCORES[length.min(5)],
+			3 => B2_SCORES[length.min(5)],
+			_ => INFINITY
+		}
+	}
+}
+
+#[derive(Clone)]
 pub struct Heuristic<'a> {
 	board: &'a Board,
+	lines: HashMap<usize, Line>,
+	lines_idx: usize,
+	line_pos: HashMap<Position, [usize; 4]>,
+	score: Option<f32>
 }
 
 impl Heuristic<'_> {
 	pub fn from_board(board: &Board) -> Heuristic {
 		Heuristic {
-			board: board
+			lines_idx: 1,
+			board: board,
+			lines: HashMap::with_capacity(1),
+			line_pos: HashMap::new(),
+			score: None,
 		}
+	}
+
+	fn get_line(&self, pos: &Position, direction_idx: usize) -> Option<&Line> {
+
+		let lines = self.line_pos.get(pos);
+		if (lines.is_none()) {
+			return None;
+		} 
+		
+		let line = self.lines.get(&lines?[direction_idx]);
+
+		return line;
+	}
+
+	fn create_line<'a>(&'a mut self, 
+		player: Piece, 
+		blocks: u8, 
+		start: Position, 
+		end: Position, 
+		direction: u8, 
+		length: usize
+	) -> &Line {
+		self.lines_idx += 1;
+
+		let inserted = self.lines.insert(self.lines_idx, 
+			Line::new(self.lines_idx, player, blocks, start, end, direction, length)
+		).unwrap();
+
+		self.lines.get(&self.lines_idx).unwrap()
+
 	}
 
 	fn get_position_score(pos: Position) -> f32 {
@@ -19,15 +138,15 @@ impl Heuristic<'_> {
 		return (y + x) / 2f32;
 	}
 
-	fn get_position_scores(board: &Board) -> f32 {
+	fn get_position_scores(&self) -> f32 {
 		let mut score = 0.0;
 		
 		for y in 0..19 {
 			for x in 0..19 {
 				let pos = Position::new(x, y);
-				if board[&pos].is_max() {
+				if self.board[&pos].is_max() {
 					score += Self::get_position_score(pos);
-				} else if board[&pos].is_min() {
+				} else if self.board[&pos].is_min() {
 					score -= Self::get_position_score(pos);
 				}
 			}
@@ -36,7 +155,264 @@ impl Heuristic<'_> {
 		return score;
 	}
 
-	pub fn get_move_order(&self, is_maximizing: bool) -> Vec<Position> {
+	fn get_line_length(&self, direction: [i32; 2], start: Position, player: Piece) -> LineResult
+	{
+		let mut pos = start.clone();
 
+		let mut response = LineResult {
+			blocked: true,
+			end: start.clone(),
+			length: 0
+		};
+
+		loop {
+			if pos.relocate(direction[0], direction[1]).is_err() {
+				return response;
+			}
+
+			if (self.board[&pos].is_opposite(&player)) {
+				if (self.board[&pos].is_empty()) {
+					response.blocked = false;
+					return response;
+				}
+				return response;
+			}
+
+			response.length += 1;
+			response.end = pos;
+		}
+	}
+
+	fn populate_line_pos(&mut self, start: &Position, end: &Position, direction: [i32; 2], direction_idx: usize, reference_idx: usize)
+	{
+		let mut pos = start.clone();
+
+		loop {
+			println!("POS: {} {}", pos, end);
+			
+			let mut p;
+			
+			if (self.line_pos.contains_key(&pos)) {
+				p = self.line_pos.get_mut(&pos).unwrap();
+			} else {
+				self.line_pos.insert(pos, [0;4]);
+
+				p = self.line_pos.get_mut(&pos).unwrap();
+			}
+
+			println!("B4: {} {} {}", pos, p[direction_idx], reference_idx);
+			
+			p[direction_idx] = reference_idx;
+
+			if (pos == *end || pos.relocate(direction[0], direction[1]).is_err()) {
+				break;
+			}
+		}
+	}
+
+	fn evaluate_position(&mut self, pos: Position) {
+		let directions = [
+			[[-1, 0], [1, 0]], //x
+			[[0, -1], [0, 1]], //y
+			[[-1, -1], [1, 1]], //tlbr
+			[[-1, 1], [1, -1]], //trbl
+		];
+
+		for (i, direction) in directions.iter().enumerate() {
+			if (self.get_line(&pos, i).is_some()) {
+				println!("get_line cached already");
+				continue;
+			}
+
+			let scores = [
+				self.get_line_length(direction[0], pos, self.board[&pos]),
+				self.get_line_length(direction[1], pos, self.board[&pos])
+			];
+
+			let block_count: u8 = ((scores[0].blocked as u8) << 1) + scores[1].blocked as u8;
+			let length = 1 + scores[0].length + scores[1].length;
+
+			println!("SCORES: {} {} {} {} {}", pos, scores[0].length, scores[1].length, length, block_count);
+
+			if length == 1 {
+				println!("continuing..");
+				continue;
+			}
+
+
+			self.lines_idx += 1;
+
+			self.lines.insert(self.lines_idx, 
+				Line::new(self.lines_idx, self.board[&pos], block_count, scores[0].end, scores[1].end, i as u8, length)
+			);
+	
+			let created_line = self.lines.get(&self.lines_idx).unwrap();
+
+			self.populate_line_pos(
+				&scores[0].end, 
+				&scores[1].end, 
+				direction[1], 
+				i, 
+				created_line.id
+			);
+		}
+	}
+
+	fn evaluate_positions(&mut self) {
+		for pos in self.board.into_iter() {
+			if self.board[&pos].is_piece() {
+				self.evaluate_position(pos);
+			}
+		}
+	}
+
+	pub fn get_heuristic(&mut self) -> f32 {
+		let mut scores = [0.0, 0.0];
+	
+		self.evaluate_positions();
+
+		for (idx, line) in &self.lines {
+			if (line.player == Piece::Max) {
+				scores[0] += line.score;
+			} else {
+				scores[1] += line.score;
+			}
+		}
+
+		let pos_score = 0.0; //self.get_position_scores();
+
+		self.score = Some(scores[0] - scores[1] + pos_score);
+
+		for line in &self.lines {
+			println!("LN: {} {} {} {}", line.1.start, line.1.end, line.1.length, line.1.score);
+		}
+
+		return self.score.unwrap();
+	}
+
+	pub fn evaluate_virtual_move(&self, pos: Position, player: Piece) -> Result<(f32, u8), &str> {
+		let directions = [
+			[[-1, 0], [1, 0]], //x
+			[[0, 1], [0, -1]], //y
+			[[-1, -1], [1, 1]], //tlbr
+			[[-1, 1], [1, -1]], //trbl
+		];
+
+		let mut evaluation = self.score.unwrap();
+		let mut captures = 0u8;
+
+		println!("LINES: {}", self.lines.len());
+
+		for (i, direction) in directions.iter().enumerate() {
+			let mut _nb_0 = pos.clone();
+			let mut _nb_1 = pos.clone();
+
+			let neighbor_lines = [
+				 if _nb_0.relocate(direction[0][0], direction[0][1]).is_ok() {self.get_line(&_nb_0, i)} else {None},
+				 if _nb_1.relocate(direction[1][0], direction[1][1]).is_ok() {self.get_line(&_nb_1, i)} else {None},
+			];
+
+			println!("NB: {} {}", _nb_0, _nb_1);
+			println!("NL: {} {}", if neighbor_lines[0].is_some() {neighbor_lines[0].unwrap().length} else {1234},
+			if neighbor_lines[1].is_some() {neighbor_lines[1].unwrap().length} else {1234}
+		);
+
+			let capture_map = [
+				neighbor_lines[0].is_some_and(|x| x.player.is_opposite(&player) && neighbor_lines[0].unwrap().length == 2 && x.block_pos & 0x2 != 0),
+				neighbor_lines[1].is_some_and(|x| x.player.is_opposite(&player) && neighbor_lines[1].unwrap().length == 2 && x.block_pos & 0x1 != 0)
+			];
+
+			let block_map = [
+				neighbor_lines[0].is_some_and(|x| x.player.is_opposite(&player)),
+				neighbor_lines[1].is_some_and(|x| x.player.is_opposite(&player))				
+			];
+
+			let mut new_calc = 0.0;
+			let mut blocks = 0;
+			let mut length = 1;
+
+			if (neighbor_lines[0].is_some() && neighbor_lines[0].unwrap().player == player) {
+				blocks |= neighbor_lines[0].unwrap().block_pos & 0x2;
+				length += neighbor_lines[0].unwrap().length;
+				new_calc -= neighbor_lines[0].unwrap().score;
+			}
+
+			if (neighbor_lines[1].is_some() && neighbor_lines[1].unwrap().player == player) {
+				blocks |= neighbor_lines[1].unwrap().block_pos & 0x1;
+				length += neighbor_lines[1].unwrap().length;
+				new_calc -= neighbor_lines[1].unwrap().score;
+			}
+
+			if (neighbor_lines[0].is_some() && neighbor_lines[0].unwrap().player != player) {
+				let new_n_score = Line::calculate(neighbor_lines[0].unwrap().block_pos & 0x1 | 0x2, neighbor_lines[0].unwrap().length);
+				new_calc -= neighbor_lines[0].unwrap().score;
+				new_calc += new_n_score;
+			}
+
+			if (neighbor_lines[1].is_some() && neighbor_lines[1].unwrap().player != player) {
+				let new_n_score = Line::calculate(neighbor_lines[1].unwrap().block_pos & 0x2 | 0x1, neighbor_lines[1].unwrap().length);
+				new_calc -= neighbor_lines[1].unwrap().score;
+				new_calc += new_n_score;
+			}
+
+			println!("Calculating with {} {} = {}", blocks, length, Line::calculate(blocks, length));
+			new_calc += Line::calculate(blocks, length);
+		
+			if (capture_map[0]) {
+				captures |= (1u8 << i + 1);
+			} else if (capture_map[1]) {
+				captures |= (1u8 << i);
+			}
+
+
+			evaluation += new_calc;
+		}
+
+		return Ok((evaluation, captures));
+	}
+
+	pub fn get_moves(&self, player: Piece) -> Vec<(Position, (f32, u8))> {
+		let mut moves = HashMap::<Position, (f32, u8)>::with_capacity(50);
+		
+		for pos in self.board.into_iter() {
+			if self.board[&pos].is_empty() {
+				continue;
+			}
+
+			for y in -1..2 {
+				for x in -1..2 {
+					let mut check_pos = pos.clone();
+
+					if (x == 0 && y == 0) || 
+						check_pos.relocate(x, y).is_err() ||
+						self.board[&check_pos].is_piece()
+					{
+						continue;
+					}
+
+					println!("--- MOVE {} ---", check_pos);
+
+					let eval = self.evaluate_virtual_move(check_pos, player).unwrap();
+
+					println!("--- RESULT=MOVE {} Score={} ({})", check_pos, eval.0, eval.1);
+
+					moves.insert(check_pos, eval);
+				}
+			}
+		}
+
+		let mut arr: Vec<(Position, (f32, u8))> = moves.into_iter().map(|f| (f.0, f.1)).collect();
+
+		if (player == Piece::Max) {
+			arr.sort_by(|a, b| b.1.0.total_cmp(&a.1.0));
+		} else {
+			arr.sort_by(|a, b| a.1.0.total_cmp(&b.1.0));
+		}
+
+		for m in &arr {
+			println!("-MOVE {} Score: {}", m.0, m.1.0);
+		}
+
+		return arr;
 	}
 }

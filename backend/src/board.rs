@@ -1,4 +1,4 @@
-use std::{fmt::{self, write}, ops::Add};
+use std::{borrow::Borrow, fmt::{self, write}, ops::Add};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -39,7 +39,7 @@ impl Default for Piece {
 
 #[derive(Clone)]
 pub struct Board {
-	data: Vec<Piece>
+	data: Vec<Piece>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -72,6 +72,13 @@ impl Position {
 
 	pub fn to_u64(&self) -> u64 {
 		return (self.y * 19 + self.x) as u64;
+	}
+
+	pub fn from_u64(pos: usize) -> Position {
+		return *Position {
+			x: pos % 19,
+			y: pos.div_euclid(19)
+		}.check_pos().unwrap();
 	}
 }
 
@@ -136,7 +143,7 @@ impl PieceWrap for Piece {
 impl Board {
 	pub fn from_map(board_map: &serde_json::Map<String, Value>) -> Board {
 		let mut board =  Board { 
-			data: vec![Piece::Empty; 19 * 19]
+			data: vec![Piece::Empty; 19 * 19],
 		 };
 
 		 for (key, value) in board_map {
@@ -145,6 +152,69 @@ impl Board {
 		}
 
 		return board;
+	}
+
+	pub fn get_captures(board: &Board, pos: Position, player: Piece) -> u8 {
+		let directions = [
+			[[-1, 0], [-2, 0], [-3, 0]],
+			[[1, 0], [2, 0], [3, 0]],
+			[[0, 1], [0, 2], [0, 3]],
+			[[0, -1], [0, -2], [0, -3]],
+			[[-1, -1], [-2, -2], [-3, -3]],
+			[[1, 1], [2, 2], [3, 3]],
+			[[-1, 1], [-2, 2], [-3, 3]],
+			[[1, 1], [2, -2], [3, -3]],
+		];
+
+		let mut rv = 0;
+
+		for (i, direction) in directions.iter().enumerate() {
+			if (
+				pos.clone().relocate(direction[0][0], direction[0][1]).is_ok_and(|f| board[&f].is_opposite(&player)) &&
+				pos.clone().relocate(direction[1][0], direction[1][1]).is_ok_and(|f| board[&f].is_opposite(&player)) &&
+				pos.clone().relocate(direction[2][0], direction[2][1]).is_ok_and(|f| board[&f].is_equal(&player))
+			) {
+				rv |= (1u8 << i);
+			}
+		}
+
+		return rv;
+	}
+
+	pub fn set_move(&mut self, pos: Position, player: Piece, mut capture_map: Option<u8>) -> &Board {
+		self[&pos] = player;
+
+		if (capture_map.is_some_and(|x| x == 0)) {
+			return self;
+		}
+
+		let mut captures = capture_map.unwrap_or_else(|| Self::get_captures(&self, pos, player));
+
+		let maps = [
+			[[-1, 0], [-2, 0]],
+			[[1, 0], [2, 0]],
+			[[0, 1], [0, 2]],
+			[[0, -1], [0, -2]],
+			[[-1, -1], [-2, -2]],
+			[[1, 1], [2, 2]],
+			[[-1, 1], [-2, 2]],
+			[[1, -1], [2, -2]],
+		];
+
+		let mut map_idx = 0;
+		while captures != 0 {
+			let needs_capture = captures & 0x1;
+			if (needs_capture == 1) {
+				let map = maps[map_idx];
+
+				self[&pos.clone().relocate(map[0][0], map[0][1]).unwrap()] = Piece::Empty;
+				self[&pos.clone().relocate(map[1][0], map[1][1]).unwrap()] = Piece::Empty;
+			}
+			captures >>= 1;
+			map_idx += 1;
+		}
+
+		self
 	}
 
 	pub fn get(&self, x: usize, y: usize) -> &Piece {
@@ -168,4 +238,36 @@ impl std::ops::IndexMut<&Position> for Board {
     fn index_mut(&mut self, idx: &Position) -> &mut Piece {
 		return &mut self.data[idx.x + idx.y * 19];
     }
+}
+
+pub struct BoardIterator<'a> {
+	board: &'a  Board,
+	index: usize
+}
+
+impl<'a> IntoIterator for &'a Board {
+    type Item = Position;
+    type IntoIter = BoardIterator<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        BoardIterator {
+            board: self,
+            index: 0,
+        }
+    }
+}
+
+
+impl<'a> Iterator for BoardIterator<'a> {
+	type Item = Position;
+
+	fn next(&mut self) -> Option<Self::Item> {
+		self.index += 1;
+
+		if (self.index >= 361) {
+			return None;			
+		}
+
+		return Some(Position::from_u64(self.index));
+	}
 }

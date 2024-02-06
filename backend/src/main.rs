@@ -5,7 +5,7 @@ use websocket::sync::Server;
 use websocket::OwnedMessage;
 use serde::{Deserialize, Serialize};
 
-use crate::algorithm::GomokuSolver;
+use crate::{algorithm::GomokuSolver, board::Piece, heuristic::Heuristic};
 mod algorithm;
 mod move_fetcher;
 mod board;
@@ -99,10 +99,14 @@ fn main() {
 							)).unwrap();
 						} else if message.subject == "evaluate" {
 							let solver = GomokuSolver::from_ws_msg(&message, &mut sender).unwrap();
+							let mut heuristic = Heuristic::from_board(&solver.board);
 
-							let board_score = GomokuSolver::get_heuristic(&solver.board);
-							let moves = GomokuSolver::get_possible_moves(&solver.board, 
-								message.data.get("is_maximizing").unwrap_or(&json!(true)).as_bool().unwrap());
+							let player_bool = message.data.get("is_maximizing").unwrap_or(&json!(true)).as_bool().unwrap();
+
+							let board_score = heuristic.get_heuristic();
+							let moves = heuristic.get_moves( 
+								if player_bool {Piece::Max} else {Piece::Min}
+								);
 
 							println!("Evaluating done");
 
