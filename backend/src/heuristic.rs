@@ -2,6 +2,13 @@ use std::{cell::Ref, collections::{HashMap, HashSet}, f32::INFINITY};
 
 use crate::board::{Board, Piece, PieceWrap, Position};
 
+const DIRECTIONS: [[[i32; 2]; 2]; 4] = [
+	[[-1, 0], [1, 0]], //x
+	[[0, -1], [0, 1]], //y
+	[[-1, -1], [1, 1]], //tlbr
+	[[-1, 1], [1, -1]], //trbl
+];
+
 const B0_SCORES: [f32; 6] = [
 	0.0,
 	2.0,
@@ -66,18 +73,20 @@ impl Line {
 			block_pos: blocks,
 			direction: direction,
 			length: length,
-			score: Self::calculate(blocks, length)
+			score: Self::calculate(blocks, length, player)
 		}
 	}
 
-	pub fn calculate(blocks: u8, length: usize) -> f32 {
-		match blocks {
+	pub fn calculate(blocks: u8, length: usize, player: Piece) -> f32 {
+		let val = match blocks {
 			0 => B0_SCORES[length.min(5)],
 			1 => B1_SCORES[length.min(5)],
 			2 => B1_SCORES[length.min(5)],
 			3 => B2_SCORES[length.min(5)],
 			_ => INFINITY
-		}
+		};
+
+		val * if player == Piece::Max {1.0} else {-1.0}
 	}
 }
 
@@ -188,7 +197,7 @@ impl Heuristic<'_> {
 		let mut pos = start.clone();
 
 		loop {
-			println!("POS: {} {}", pos, end);
+			// println!("POS: {} {}", pos, end);
 			
 			let mut p;
 			
@@ -200,7 +209,7 @@ impl Heuristic<'_> {
 				p = self.line_pos.get_mut(&pos).unwrap();
 			}
 
-			println!("B4: {} {} {}", pos, p[direction_idx], reference_idx);
+			// println!("B4: {} {} {}", pos, p[direction_idx], reference_idx);
 			
 			p[direction_idx] = reference_idx;
 
@@ -220,7 +229,7 @@ impl Heuristic<'_> {
 
 		for (i, direction) in directions.iter().enumerate() {
 			if (self.get_line(&pos, i).is_some()) {
-				println!("get_line cached already");
+				// println!("get_line cached already");
 				continue;
 			}
 
@@ -232,10 +241,10 @@ impl Heuristic<'_> {
 			let block_count: u8 = ((scores[0].blocked as u8) << 1) + scores[1].blocked as u8;
 			let length = 1 + scores[0].length + scores[1].length;
 
-			println!("SCORES: {} {} {} {} {}", pos, scores[0].length, scores[1].length, length, block_count);
+			// println!("SCORES: {} {} {} {} {}", pos, scores[0].length, scores[1].length, length, block_count);
 
 			if length == 1 {
-				println!("continuing..");
+				// println!("continuing..");
 				continue;
 			}
 
@@ -275,7 +284,7 @@ impl Heuristic<'_> {
 			if (line.player == Piece::Max) {
 				scores[0] += line.score;
 			} else {
-				scores[1] += line.score;
+				scores[1] -= line.score;
 			}
 		}
 
@@ -284,26 +293,84 @@ impl Heuristic<'_> {
 		self.score = Some(scores[0] - scores[1] + pos_score);
 
 		for line in &self.lines {
-			println!("LN: {} {} {} {}", line.1.start, line.1.end, line.1.length, line.1.score);
+			// println!("LN: {} {} L:{} S:{} B:{}", line.1.start, line.1.end, line.1.length, line.1.score, line.1.block_pos);
 		}
 
 		return self.score.unwrap();
 	}
 
-	pub fn evaluate_virtual_move(&self, pos: Position, player: Piece) -> Result<(f32, u8), &str> {
-		let directions = [
-			[[-1, 0], [1, 0]], //x
-			[[0, 1], [0, -1]], //y
-			[[-1, -1], [1, 1]], //tlbr
-			[[-1, 1], [1, -1]], //trbl
+	fn validate_virtual_move(&self, pos: Position, player: Piece) -> bool
+	{
+		let patterns = [
+			[Piece::Empty, player, player, player, Piece::Empty, Piece::Max],
+			[Piece::Empty, player, player, Piece::Empty, player, Piece::Empty],
+			[Piece::Empty, player, Piece::Empty, player, player, Piece::Empty],
 		];
+
+		let mut patterns_possible;
+
+		for direction in DIRECTIONS {
+			for offset in -5i32..4 {
+				patterns_possible = 0x1 | 0x2 | 0x4;
+				let mut cur_pos = pos.clone();
+
+				if (offset < 0) {
+					if (cur_pos.relocate_n(direction[0][0], direction[0][1], offset.abs() as usize).is_err()) {
+						continue;
+					}
+				} else if offset > 0 {
+					if (cur_pos.relocate_n(direction[1][0], direction[1][1], offset as usize).is_err()) {
+						continue;
+					}		
+				}
+
+				println!("START_POS: {} OF: {} Dir: {} {}", cur_pos, offset, direction[1][0], direction[1][1]);
+
+				for i in 0..6 {
+					if (patterns_possible == 0) {
+						break;
+					}
+					println!("RUN {}: {} {}", i, patterns_possible, cur_pos);
+
+					if (cur_pos.relocate(direction[1][0], direction[1][1]).is_err()) {
+						patterns_possible = 0;
+						break;
+					}
+					for p in 0..3 {
+						if (i == 5 && p == 0) {
+							continue;
+						}
+
+						if (patterns_possible & (0x1 << p) != 0) {
+							let field_val = if pos == cur_pos {player} else {self.board[&cur_pos]};
+
+							println!("CHECK: {}=={}", patterns[p][i], field_val);
+
+							if (patterns[p][i] != field_val) {
+								patterns_possible ^= (0x1 << p);
+							}
+						}
+					}
+				}
+				println!("in the end: {}", patterns_possible);
+
+				if (patterns_possible != 0) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	pub fn evaluate_virtual_move(&self, pos: Position, player: Piece) -> Result<(f32, u8), &str> {
 
 		let mut evaluation = self.score.unwrap();
 		let mut captures = 0u8;
 
-		println!("LINES: {}", self.lines.len());
+		// println!("LINES: {}", self.lines.len());
 
-		for (i, direction) in directions.iter().enumerate() {
+		for (i, direction) in DIRECTIONS.iter().enumerate() {
 			let mut _nb_0 = pos.clone();
 			let mut _nb_1 = pos.clone();
 
@@ -312,10 +379,10 @@ impl Heuristic<'_> {
 				 if _nb_1.relocate(direction[1][0], direction[1][1]).is_ok() {self.get_line(&_nb_1, i)} else {None},
 			];
 
-			println!("NB: {} {}", _nb_0, _nb_1);
-			println!("NL: {} {}", if neighbor_lines[0].is_some() {neighbor_lines[0].unwrap().length} else {1234},
-			if neighbor_lines[1].is_some() {neighbor_lines[1].unwrap().length} else {1234}
-		);
+			// println!("NB: {} {}", _nb_0, _nb_1);
+			// println!("NL: {} {}", if neighbor_lines[0].is_some() {neighbor_lines[0].unwrap().length} else {1234},
+			// 	if neighbor_lines[1].is_some() {neighbor_lines[1].unwrap().length} else {1234}
+			// );
 
 			let capture_map = [
 				neighbor_lines[0].is_some_and(|x| x.player.is_opposite(&player) && neighbor_lines[0].unwrap().length == 2 && x.block_pos & 0x2 != 0),
@@ -344,19 +411,18 @@ impl Heuristic<'_> {
 			}
 
 			if (neighbor_lines[0].is_some() && neighbor_lines[0].unwrap().player != player) {
-				let new_n_score = Line::calculate(neighbor_lines[0].unwrap().block_pos & 0x1 | 0x2, neighbor_lines[0].unwrap().length);
+				let new_n_score = Line::calculate(neighbor_lines[0].unwrap().block_pos & 0x2 | 0x1, neighbor_lines[0].unwrap().length, player);
 				new_calc -= neighbor_lines[0].unwrap().score;
 				new_calc += new_n_score;
 			}
 
 			if (neighbor_lines[1].is_some() && neighbor_lines[1].unwrap().player != player) {
-				let new_n_score = Line::calculate(neighbor_lines[1].unwrap().block_pos & 0x2 | 0x1, neighbor_lines[1].unwrap().length);
+				let new_n_score = Line::calculate(neighbor_lines[1].unwrap().block_pos & 0x1 | 0x2, neighbor_lines[1].unwrap().length, player);
 				new_calc -= neighbor_lines[1].unwrap().score;
 				new_calc += new_n_score;
 			}
 
-			println!("Calculating with {} {} = {}", blocks, length, Line::calculate(blocks, length));
-			new_calc += Line::calculate(blocks, length);
+			new_calc += Line::calculate(blocks, length, player);
 		
 			if (capture_map[0]) {
 				captures |= (1u8 << i + 1);
@@ -390,11 +456,18 @@ impl Heuristic<'_> {
 						continue;
 					}
 
-					println!("--- MOVE {} ---", check_pos);
+					
+					// check_pos = Position::new(5, 7);
+					// println!("--- MOVE {} ---", check_pos);
+					// if (self.validate_virtual_move(check_pos, player) == false) {
+					// 	println!("INVALIDATED");
+					// 	// return vec![];
+					// 	continue;
+					// }
 
 					let eval = self.evaluate_virtual_move(check_pos, player).unwrap();
 
-					println!("--- RESULT=MOVE {} Score={} ({})", check_pos, eval.0, eval.1);
+					// println!("--- RESULT=MOVE {} Score={} ({})", check_pos, eval.0, eval.1);
 
 					moves.insert(check_pos, eval);
 				}

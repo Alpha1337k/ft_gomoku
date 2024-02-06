@@ -70,6 +70,16 @@ impl Position {
 		return self.check_pos();
 	}
 
+	pub fn relocate_n(&mut self, d_x: i32, d_y: i32, n: usize) -> Result<&Self, &str> {
+		for i in 0..n {
+			if(self.relocate(d_x, d_y).is_err()) {
+				return Err("Invalid position");
+			}
+		}
+
+		return Ok(self);
+	}
+
 	pub fn to_u64(&self) -> u64 {
 		return (self.y * 19 + self.x) as u64;
 	}

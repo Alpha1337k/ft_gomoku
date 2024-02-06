@@ -45,8 +45,6 @@ impl GomokuSolver<'_> {
 
 		println!("MOVES: {}", possible_moves.len());
 
-		return (0.0, moves);
-
 		moves.push(Position::new(0, 0));
 
 		let _squares_checked = 0;
@@ -61,12 +59,15 @@ impl GomokuSolver<'_> {
 					println!("PGR @D {}: {} D0: {}", depth, i.0, self.depth_zero_hits);
 				}
 
-				let mut new_board = board.clone()
-					.set_move(i.0, Piece::Max, Some(i.1.1));
+				let mut new_board = board.clone();
+
+				new_board.set_move(i.0, Piece::Max, Some(i.1.1));
 
 				let mut node_result = self.minimax(depth - 1, &new_board, alpha, beta, Piece::Min);
 
-				println!("RES: pos: {} V:{}", i.0, node_result.0);
+				if (depth == 4) {
+					println!("RES: pos: {} V:{}", i.0, node_result.0);
+				}
 
 				if node_result.0 > val {
 					val = node_result.0;
@@ -94,12 +95,16 @@ impl GomokuSolver<'_> {
 					println!("PGR @D {}: {} D0: {}", depth, i.0, self.depth_zero_hits);
 				}
 
-				let mut new_board = board.clone()
-					.set_move(i.0, Piece::Max, Some(i.1.1));
+				let mut new_board = board.clone();
+
+				new_board.set_move(i.0, Piece::Min, Some(i.1.1));
 
 				let mut node_result = self.minimax(depth - 1, &new_board, alpha, beta, Piece::Max);
 
-				println!("RES: pos: {} V:{}", i.0, node_result.0);
+				if (depth == 4) {
+					println!("RES: pos: {} V:{}", i.0, node_result.0);
+				}
+
 
 				if node_result.0 < val {
 					val = node_result.0;
