@@ -1,5 +1,5 @@
-use std::{collections::HashMap, thread};
-use board::Position;
+use std::{thread};
+
 use serde_json::json;
 use websocket::sync::Server;
 use websocket::OwnedMessage;
@@ -85,7 +85,7 @@ fn main() {
 						if message.subject == "calculate" {
 							let mut solver = GomokuSolver::from_ws_msg(&message, &mut sender).unwrap();
 
-							let mut result = solver.solve().unwrap();
+							let result = solver.solve().unwrap();
 
 							sender.send_message(&OwnedMessage::Text(
 								serde_json::to_string(&WSMessage{

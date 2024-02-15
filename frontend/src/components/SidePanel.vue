@@ -45,7 +45,7 @@
 				</button>
 			</div>
 			<div class="p-2 flex-1">
-				<Slider :max="6" :min="0" v-model="gameState.depth">
+				<Slider :max="6" :min="1" v-model="gameState.depth">
 					Depth ({{ gameState.depth }})
 				</Slider>
 				<div>

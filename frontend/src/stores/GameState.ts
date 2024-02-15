@@ -110,7 +110,10 @@ export const useGameStateStore = defineStore("gameState", () => {
 			currentState.value.board[move] = 1;
 			handleMove(move, 1);
 			currentState.value.moves[currentState.value.moves.length - 1].push(move);
-			response = await ws.sendMessage<CalculationResponse>("calculate", currentState.value);
+			response = await ws.sendMessage<CalculationResponse>("calculate", {
+				depth: depth.value,
+				...currentState.value
+			});
 			console.log(response);
 
 			currentState.value.currentTurn = 0;
@@ -125,8 +128,10 @@ export const useGameStateStore = defineStore("gameState", () => {
 			currentState.value.moves.push(move_push);
 			currentState.value.currentTurn = 1;
 
-	
-			response = await ws.sendMessage<CalculationResponse>("calculate", currentState.value);
+			response = await ws.sendMessage<CalculationResponse>("calculate", {
+				depth: depth.value,
+				...currentState.value
+			});
 			console.log(response);
 			const aiMove = response.moves.shift()!;
 

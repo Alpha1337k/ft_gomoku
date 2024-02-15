@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, fmt::{self, write}, ops::Add};
+use std::{fmt::{self}};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -57,7 +57,7 @@ impl Position {
 	}
 
 	fn check_pos(&self) -> Result<&Position, &str> {
-		if (self.x >= 19 || self.y >= 19) {
+		if self.x >= 19 || self.y >= 19 {
 			return Err("Invalid position");
 		}
 		return Ok(self);
@@ -71,8 +71,8 @@ impl Position {
 	}
 
 	pub fn relocate_n(&mut self, d_x: i32, d_y: i32, n: usize) -> Result<&Self, &str> {
-		for i in 0..n {
-			if(self.relocate(d_x, d_y).is_err()) {
+		for _i in 0..n {
+			if self.relocate(d_x, d_y).is_err() {
 				return Err("Invalid position");
 			}
 		}
@@ -179,22 +179,20 @@ impl Board {
 		let mut rv = 0;
 
 		for (i, direction) in directions.iter().enumerate() {
-			if (
-				pos.clone().relocate(direction[0][0], direction[0][1]).is_ok_and(|f| board[&f].is_opposite(&player)) &&
+			if pos.clone().relocate(direction[0][0], direction[0][1]).is_ok_and(|f| board[&f].is_opposite(&player)) &&
 				pos.clone().relocate(direction[1][0], direction[1][1]).is_ok_and(|f| board[&f].is_opposite(&player)) &&
-				pos.clone().relocate(direction[2][0], direction[2][1]).is_ok_and(|f| board[&f].is_equal(&player))
-			) {
-				rv |= (1u8 << i);
+				pos.clone().relocate(direction[2][0], direction[2][1]).is_ok_and(|f| board[&f].is_equal(&player)) {
+				rv |= 1u8 << i;
 			}
 		}
 
 		return rv;
 	}
 
-	pub fn set_move(&mut self, pos: Position, player: Piece, mut capture_map: Option<u8>) -> &Board {
+	pub fn set_move(&mut self, pos: Position, player: Piece, capture_map: Option<u8>) -> &Board {
 		self[&pos] = player;
 
-		if (capture_map.is_some_and(|x| x == 0)) {
+		if capture_map.is_some_and(|x| x == 0) {
 			return self;
 		}
 
@@ -214,8 +212,10 @@ impl Board {
 		let mut map_idx = 0;
 		while captures != 0 {
 			let needs_capture = captures & 0x1;
-			if (needs_capture == 1) {
+			if needs_capture == 1 {
 				let map = maps[map_idx];
+
+				println!("TAKING FOR IDX {}", map_idx);
 
 				self[&pos.clone().relocate(map[0][0], map[0][1]).unwrap()] = Piece::Empty;
 				self[&pos.clone().relocate(map[1][0], map[1][1]).unwrap()] = Piece::Empty;
@@ -274,7 +274,7 @@ impl<'a> Iterator for BoardIterator<'a> {
 	fn next(&mut self) -> Option<Self::Item> {
 		self.index += 1;
 
-		if (self.index >= 361) {
+		if self.index >= 361 {
 			return None;			
 		}
 
