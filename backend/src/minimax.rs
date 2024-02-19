@@ -1,32 +1,33 @@
-use std::{f32::{INFINITY}, io::Error, net::{TcpStream}};
+use std::{f32::{INFINITY}, io::Error};
 
 use serde_json::json;
-use websocket::{sync::Writer};
 
-use crate::{board::{Board, Piece, PieceWrap, Position}, heuristic::Heuristic, WSMessage};
 
-pub struct GomokuSolver<'a>
+use crate::{board::Board, heuristic::Heuristic, piece::{Piece, PieceWrap}, position::Position, CalculateRequest, WSMessage};
+
+pub struct GomokuSolver
 {
 	pub board: Board,
 	turn_idx: u8,
 	depth: usize,
-	sender: Option<&'a mut Writer<TcpStream>>,
 	depth_zero_hits: usize
 }
 
-impl GomokuSolver<'_> {
-	pub fn from_ws_msg<'a>(msg: &WSMessage, sender: &'a mut Writer<TcpStream>) -> Option<GomokuSolver<'a>> {
-		let board_raw = msg.data.as_object()?.get("board")?.as_object()?;
+impl GomokuSolver {
+	pub fn from_request(msg: &CalculateRequest) -> GomokuSolver {
 
-		let solver = GomokuSolver{
-			board: Board::from_map(board_raw),
-			turn_idx: msg.data.as_object()?.get("currentTurn").unwrap_or(&json!(0)).as_i64()? as u8,
-			sender: Some(sender),
+		let mut solver = GomokuSolver{
+			board: Board::from_map(&msg.board),
+			turn_idx: msg.turn_idx,
 			depth_zero_hits: 0,
-			depth: msg.data.as_object()?.get("depth").unwrap_or(&json!(0)).as_u64()? as usize,
+			depth: msg.depth,
 		};
 
-		return Some(solver);
+		if (msg.in_move.is_some()) {
+			solver.board.set_move(msg.in_move.unwrap(), msg.player, None);
+		}
+
+		return solver;
 	}
 
 	fn minimax(&mut self, depth: usize, board: &Board, mut alpha: f32, mut beta: f32, player: Piece) -> (f32, Vec<Position>)

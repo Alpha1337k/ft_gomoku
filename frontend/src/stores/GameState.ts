@@ -61,58 +61,20 @@ export const useGameStateStore = defineStore("gameState", () => {
 		editState.value = response;
 	}
 
-	function handleMove(move: number, is_maximizing: number) {
-		let maps = [
-			[move - 1, move - 2, move - 3],
-			[move +  1, move + 2, move + 3],
-			[move +  19, move + 38, move + 57],
-			[move -  19, move - 38, move - 57],
-			[move - 1 - 19, move - 2 - 38, move - 3 - 57],
-			[move + 1 + 19, move + 2 + 38, move + 3 + 57],
-			[move - 1 + 19, move - 2 + 38, move - 3 + 57],
-			[move + 1 - 19, move + 2 - 38, move + 3 - 57],
-		];
-
-
-		for (let i = 0; i < maps.length; i++) {
-			const e = maps[i];
-			const oppVal = !is_maximizing ? 1 : 0;
-
-			console.log(e);
-
-			let oldPos = move;
-
-			for (let n = 0; n < 3; n++) {
-				if (e[n] >= 19 * 19 || 
-					e[n] < 0 || 
-					(oldPos % 19 == 18 && e[n] % 19 == 0) ||
-					(oldPos % 19 == 0 && e[n] % 19 == 18)) {
-						return;
-				}
-				oldPos = e[n];
-			}
-
-			if (
-				currentState.value.board[e[0]] == oppVal &&
-				currentState.value.board[e[1]] == oppVal &&
-				currentState.value.board[e[2]] == is_maximizing
-			) {
-				currentState.value.board[e[0]] = undefined;
-				currentState.value.board[e[1]] = undefined;
-				console.log(e, oppVal, "SUCCESS");
-			}
-		}
-	}
-
 	async function submitMove(move: number) {
 		let response = {} as CalculationResponse;
 		if (currentState.value.currentTurn == 1) {
 			currentState.value.board[move] = 1;
-			handleMove(move, 1);
 			currentState.value.moves[currentState.value.moves.length - 1].push(move);
 			response = await ws.sendMessage<CalculationResponse>("calculate", {
 				depth: depth.value,
-				...currentState.value
+				board: currentState.value.board,
+				turn_idx: currentState.value.currentTurn,
+				in_move: {
+					x: move % 19,
+					y: Math.floor(move / 19)
+				},
+				player: 0,
 			});
 			console.log(response);
 
@@ -121,7 +83,6 @@ export const useGameStateStore = defineStore("gameState", () => {
 		}
 		else {
 			currentState.value.board[move] = 0;
-			handleMove(move, 0);
 			
 			const move_push = [move];
 	
@@ -130,7 +91,13 @@ export const useGameStateStore = defineStore("gameState", () => {
 
 			response = await ws.sendMessage<CalculationResponse>("calculate", {
 				depth: depth.value,
-				...currentState.value
+				board: currentState.value.board,
+				turn_idx: currentState.value.currentTurn,
+				in_move: {
+					x: move % 19,
+					y: Math.floor(move / 19)
+				},
+				player: 1,
 			});
 			console.log(response);
 			const aiMove = response.moves.shift()!;
@@ -139,7 +106,6 @@ export const useGameStateStore = defineStore("gameState", () => {
 			if (aiMove) {
 				move_push.push(aiMove);
 				currentState.value.board[aiMove] = 1;
-				handleMove(aiMove, 1);
 				currentState.value.currentTurn = 0;
 			}
 		}

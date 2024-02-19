@@ -1,15 +1,19 @@
 use std::{thread};
 
-use serde_json::json;
+use position::Position;
+use serde_json::{json, Value};
 use websocket::sync::Server;
 use websocket::OwnedMessage;
 use serde::{Deserialize, Serialize};
 
-use crate::{algorithm::GomokuSolver, board::Piece, heuristic::Heuristic};
-mod algorithm;
+use crate::{board::Board, heuristic::Heuristic, minimax::GomokuSolver, move_calculator::{Move, MoveCalculator}, piece::Piece};
+mod minimax;
 mod move_fetcher;
 mod board;
+mod position;
+mod piece;
 mod heuristic;
+mod move_calculator;
 
 #[derive(Serialize, Deserialize)]
 pub struct WSMessage
@@ -17,6 +21,21 @@ pub struct WSMessage
 	subject: String,
 	requestId: Option<String>,
 	data: serde_json::Value
+}
+
+#[derive(Deserialize)]
+pub struct MoveRequest {
+	delta: Vec<Move>,
+	board: serde_json::Map<String, Value>
+}
+
+#[derive(Deserialize)]
+pub struct CalculateRequest {
+	board: serde_json::Map<String, Value>,
+	depth: usize,
+	turn_idx: u8,
+	in_move: Option<Position>,
+	player: Piece
 }
 
 #[derive(Serialize, Deserialize)]
@@ -65,6 +84,8 @@ fn main() {
 
 			let (mut receiver, mut sender) = client.split().unwrap();
 
+			let mut moves = MoveCalculator::new(&Board::new());
+
 			for message in receiver.incoming_messages() {
 				let message = message.unwrap();
 
@@ -83,7 +104,17 @@ fn main() {
 						let message: WSMessage = serde_json::from_str(&text).unwrap();
 
 						if message.subject == "calculate" {
-							let mut solver = GomokuSolver::from_ws_msg(&message, &mut sender).unwrap();
+							let request: CalculateRequest = serde_json::from_value(message.data).unwrap();
+
+							let mut solver = GomokuSolver::from_request(&request);
+
+							sender.send_message(&OwnedMessage::Text(
+								serde_json::to_string(&WSMessage{
+									requestId: None,
+									subject: "boardUpdate".to_string(),
+									data: serde_json::to_value(&solver.board).unwrap()
+								}).unwrap()
+							)).unwrap();
 
 							let result = solver.solve().unwrap();
 
@@ -98,15 +129,13 @@ fn main() {
 								}).unwrap()
 							)).unwrap();
 						} else if message.subject == "evaluate" {
-							let solver = GomokuSolver::from_ws_msg(&message, &mut sender).unwrap();
+							let request: CalculateRequest = serde_json::from_value(message.data).unwrap();
+
+							let solver = GomokuSolver::from_request(&request);
 							let mut heuristic = Heuristic::from_board(&solver.board);
 
-							let player_bool = message.data.get("is_maximizing").unwrap_or(&json!(true)).as_bool().unwrap();
-
 							let board_score = heuristic.get_heuristic();
-							let moves = heuristic.get_moves( 
-								if player_bool {Piece::Max} else {Piece::Min}
-								);
+							let moves = heuristic.get_moves(request.player);
 
 							println!("Evaluating done");
 
@@ -118,6 +147,19 @@ fn main() {
 										boardScore: resolve_infinity(board_score),
 										evalPrio: moves.iter().map(|f| f.0.to_u64()).collect()
 									}).unwrap()
+								}).unwrap()
+							)).unwrap();
+						} else if message.subject == "moves" {
+							let request: MoveRequest = serde_json::from_value(message.data).unwrap();
+							let board = Board::from_map(&request.board);
+
+							moves = MoveCalculator::from_calculator(&moves, &board, request.delta);
+
+							sender.send_message(&OwnedMessage::Text(
+								serde_json::to_string(&WSMessage{
+									requestId: message.requestId,
+									subject: "moves".to_string(),
+									data: serde_json::to_value(&moves).unwrap()
 								}).unwrap()
 							)).unwrap();
 						}
