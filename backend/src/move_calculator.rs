@@ -13,8 +13,8 @@ const DIRECTIONS: [[[i32; 2]; 2]; 4] = [
 
 #[derive(Serialize, Deserialize)]
 pub struct Move {
-	position: Position,
-	piece: Piece
+	pub position: Position,
+	pub piece: Piece
 }
 
 #[derive(Serialize, Deserialize)]
@@ -55,8 +55,8 @@ impl MoveCalculator {
 		let mut checkable_positions = HashSet::<Position>::with_capacity(delta.len() * 25);
 
 		for d in delta {
-			for x in -1..1 {
-				for y in -1..1 {
+			for x in -1..2 {
+				for y in -1..2 {
 					if x == 0 && y == 0 && d.piece != Piece::Empty {
 						continue;
 					}
@@ -64,6 +64,10 @@ impl MoveCalculator {
 					let mut new_pos = d.position.clone();
 
 					if new_pos.relocate(x, y).is_err() {
+						continue;
+					}
+
+					if (board[&new_pos].is_piece()) {
 						continue;
 					}
 
@@ -89,11 +93,17 @@ impl MoveCalculator {
 		return new_calc;
 	}
 
-	fn match_pattern(&self, start_pos: Position, direction: [i32;2], pattern: &Vec<Piece>, board: &Board) -> bool {
+	fn match_pattern(&self,
+			start_pos: Position, 
+			direction: [i32;2], 
+			pattern: &Vec<Piece>, 
+			player_pos: Position,
+			board: &Board
+		) -> bool {
 		let mut pos = start_pos.clone();
 
 		for i in 0..pattern.len() {
-			if board[&pos].is_equal(&pattern[i]) == false {
+			if board[&pos] != pattern[i] && pos != player_pos {
 				return false;
 			}
 			if pos.relocate(direction[0], direction[1]).is_err() {
@@ -108,9 +118,7 @@ impl MoveCalculator {
 	{
 		self.positions_checked += 1;
 
-		let capture_pattern = vec![
-			player, player.get_opposite(), player.get_opposite(), player
-		];
+		let mut free_three_count = 0;
 
 		let patterns = vec![
 			vec![Piece::Empty, player, player, player, Piece::Empty],
@@ -118,13 +126,9 @@ impl MoveCalculator {
 			vec![Piece::Empty, player, Piece::Empty, player, player, Piece::Empty],
 		];
 
-		for direction in DIRECTIONS {
-			if	self.match_pattern(pos, direction[0], &capture_pattern, board) ||
-				self.match_pattern(pos, direction[1], &capture_pattern, board)
-			{
-				return true;
-			}
 
+
+		for direction in DIRECTIONS {
 			for offset in -5i32..4 {
 				let mut cur_pos = pos.clone();
 
@@ -138,13 +142,17 @@ impl MoveCalculator {
 					}		
 				}
 
-				if	self.match_pattern(cur_pos, direction[1], &patterns[0], board) ||
-					self.match_pattern(cur_pos, direction[1], &patterns[1], board) ||
-					self.match_pattern(cur_pos, direction[1], &patterns[2], board) {
+				if	self.match_pattern(cur_pos, direction[1], &patterns[0], pos, board) ||
+					self.match_pattern(cur_pos, direction[1], &patterns[1], pos, board) ||
+					self.match_pattern(cur_pos, direction[1], &patterns[2], pos, board) {
+					free_three_count += 1;
+					if (free_three_count >= 2) {
 						return false;
 					}
+				}
 			}
 		}
+
 		return true;
 	}
 }

@@ -27,7 +27,8 @@
 					<div v-else-if="hoverPos == i - 1 && ctrlPressed == false" class="rounded-xl bg-blue-800/75 h-5/6 w-5/6"></div>
 					<div v-else-if="hoverPos == i - 1 && ctrlPressed == true" class="rounded-xl bg-red-800/75 h-5/6 w-5/6"></div>
 					<div v-else="evalPrioMap[i -1 ] != undefined" class="h-5/6 w-5/6">
-							<p class="text-white h-10 mx-auto text-center">{{ evalPrioMap[i -1 ] }}</p>
+							<p class="text-white h-10 mx-auto text-center">{{ evalPrioMap[i -1 ]?.idx }}</p>
+							<p class="h-10 mx-auto text-center absolute text-sm text-gray-400 -mt-5 ml-1">{{ evalPrioMap[i -1 ]?.score.toFixed(2) }}</p>
 					</div>			
 				</div>
 			</div>
@@ -52,11 +53,18 @@ const emit = defineEmits(["moveChosen"]);
 const ctrlPressed = ref(false);
 
 const evalPrioMap = computed(() => {
-	const mapped: {[key: number]: number} = {}
+	const mapped: {[key: number]: {
+		idx: number,
+		score: number
+	}} = {}
 
-	if (gameState.isEditMode && gameState.editState?.evalPrio) {
-		for (let i = 0; i < gameState.editState.evalPrio.length; i++) {
-			mapped[gameState.editState.evalPrio[i]] = i;
+	if (gameState.isEditMode && gameState.editState?.moves) {
+		for (let i = 0; i < gameState.editState.moves.length; i++) {
+			const move = gameState.editState.moves[i];
+			mapped[move[0].x + move[0].y * 19] = {
+				idx: i,
+				score: move[1][0]
+			};
 		}
 	}
 	return mapped;

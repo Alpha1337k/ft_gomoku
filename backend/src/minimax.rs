@@ -3,7 +3,7 @@ use std::{f32::{INFINITY}, io::Error};
 use serde_json::json;
 
 
-use crate::{board::Board, heuristic::Heuristic, piece::{Piece, PieceWrap}, position::Position, CalculateRequest, WSMessage};
+use crate::{board::Board, heuristic::Heuristic, move_calculator::{self, MoveCalculator}, piece::{Piece, PieceWrap}, position::Position, CalculateRequest, WSMessage};
 
 pub struct GomokuSolver
 {
@@ -42,12 +42,14 @@ impl GomokuSolver {
 			return (heuristical_score, moves);
 		}
 
-		let possible_moves = heuristic.get_moves(player);
+		let m_calc = MoveCalculator::new(&board);
+
+		let possible_moves = heuristic.get_moves(player, &m_calc.moves);
 
 		moves.push(Position::new(0, 0));
 
 		let mut val;
-		let opp_player = if player.is_max() {Piece::Min} else {Piece::Max};
+		let opp_player = player.get_opposite();
 				
 		if player == Piece::Max {
 			val = -INFINITY;

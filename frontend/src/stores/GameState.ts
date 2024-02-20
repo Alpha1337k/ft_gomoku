@@ -12,11 +12,12 @@ export interface GameState {
 	score: number;
 	moves: number[][];
 	predictedMoves: number[];
+	piecesTaken: number[];
 }
 
 export interface EvalState {
 	boardScore: number
-	evalPrio: number[]
+	moves: [{x: number, y: number}, number[]][]
 }
 
 export interface CalculationResponse {
@@ -33,6 +34,7 @@ export const useGameStateStore = defineStore("gameState", () => {
 		board: {},
 		moves: [],
 		predictedMoves: [],
+		piecesTaken: [0, 0]
 	});
 
 	const depth = ref(4);
@@ -44,10 +46,26 @@ export const useGameStateStore = defineStore("gameState", () => {
 
 	const editState = ref<Partial<EvalState>>();
 
+	ws.emitter.on('boardUpdate', (b: {data: number[]}) => {
+		let newBoard = {} as Board;
+
+		console.log(b);
+
+		for (let i = 0; i < b.data.length; i++) {
+			if (b.data[i] == -1) continue;
+
+			newBoard[i] = b.data[i]
+		}
+
+		console.log(newBoard);
+
+		currentState.value.board = newBoard;
+	})
+
 	async function submitEdit() {
 		const response = await ws.sendMessage<EvalState>("evaluate", {
 			board: currentState.value.board,
-			is_maximizing: editSettings.value.is_maximizing
+			player: editSettings.value.is_maximizing ? 0 : 1,
 		});
 
 		if (response.boardScore == 1234) {
@@ -63,52 +81,27 @@ export const useGameStateStore = defineStore("gameState", () => {
 
 	async function submitMove(move: number) {
 		let response = {} as CalculationResponse;
-		if (currentState.value.currentTurn == 1) {
-			currentState.value.board[move] = 1;
-			currentState.value.moves[currentState.value.moves.length - 1].push(move);
-			response = await ws.sendMessage<CalculationResponse>("calculate", {
-				depth: depth.value,
-				board: currentState.value.board,
-				turn_idx: currentState.value.currentTurn,
-				in_move: {
-					x: move % 19,
-					y: Math.floor(move / 19)
-				},
-				player: 0,
-			});
-			console.log(response);
 
+		const move_push = [move];
+		response = await ws.sendMessage<CalculationResponse>("calculate", {
+			depth: depth.value,
+			board: currentState.value.board,
+			turn_idx: currentState.value.currentTurn,
+			in_move: {
+				x: move % 19,
+				y: Math.floor(move / 19)
+			},
+			player: 0,
+		});
+		console.log(response);
+		const aiMove = response.moves.shift()!;
+	
+		if (aiMove) {
+			move_push.push(aiMove);
 			currentState.value.currentTurn = 0;
-			console.log(response);
 		}
-		else {
-			currentState.value.board[move] = 0;
-			
-			const move_push = [move];
-	
-			currentState.value.moves.push(move_push);
-			currentState.value.currentTurn = 1;
 
-			response = await ws.sendMessage<CalculationResponse>("calculate", {
-				depth: depth.value,
-				board: currentState.value.board,
-				turn_idx: currentState.value.currentTurn,
-				in_move: {
-					x: move % 19,
-					y: Math.floor(move / 19)
-				},
-				player: 1,
-			});
-			console.log(response);
-			const aiMove = response.moves.shift()!;
-
-	
-			if (aiMove) {
-				move_push.push(aiMove);
-				currentState.value.board[aiMove] = 1;
-				currentState.value.currentTurn = 0;
-			}
-		}
+		currentState.value.moves.push(move_push);
 
 		if (response.score == 1234) {
 			currentState.value.score = Infinity;

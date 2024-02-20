@@ -52,7 +52,7 @@
 					<p>Board d0 evaluation: {{ gameState.editState?.boardScore?.toFixed(4) ?? "?" }}</p>
 				</div>
 				<div class="flex justify-between">
-					<p>View prio for player 1?</p>
+					<p>View prio for blue?</p>
 					<input type="checkbox" v-model="gameState.editSettings.is_maximizing" @change="gameState.submitEdit()"/>
 				</div>
 			</div>
