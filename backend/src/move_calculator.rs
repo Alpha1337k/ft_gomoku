@@ -93,7 +93,7 @@ impl MoveCalculator {
 					self.match_pattern(cur_pos, direction[1], &patterns[1], pos, board) ||
 					self.match_pattern(cur_pos, direction[1], &patterns[2], pos, board) {
 					free_three_count += 1;
-					if (free_three_count >= 2) {
+					if free_three_count >= 2 {
 						return false;
 					}
 				}

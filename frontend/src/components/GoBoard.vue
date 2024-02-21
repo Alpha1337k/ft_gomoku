@@ -28,7 +28,7 @@
 					<div v-else-if="hoverPos == i - 1 && ctrlPressed == true" class="rounded-xl bg-red-800/75 h-5/6 w-5/6"></div>
 					<div v-else="evalPrioMap[i -1 ] != undefined" class="h-5/6 w-5/6">
 							<p class="text-white h-10 mx-auto text-center">{{ evalPrioMap[i -1 ]?.idx }}</p>
-							<p class="h-10 mx-auto text-center absolute text-sm text-gray-400 -mt-5 ml-1">{{ evalPrioMap[i -1 ]?.score.toFixed(2) }}</p>
+							<p class="h-10 mx-auto text-center absolute text-sm text-gray-400 -mt-5 ml-1">{{ resolveScore(evalPrioMap[i -1 ]?.score) }}</p>
 					</div>			
 				</div>
 			</div>
@@ -91,6 +91,19 @@ function handleRightClick(pos: number) {
 		props.boardPositions[pos] = undefined;
 		gameState.submitEdit();
 	}
+}
+
+function resolveScore(v: number): string {
+	if (v === undefined) {
+		return ''
+	}
+
+	if (v == 1234) {
+		return "+Inf";
+	} else if (v == -1234) {
+		return "-Inf";
+	}
+	return v.toPrecision(3).substring(0,4)
 }
 
 function handleClick(event: PointerEvent, pos: number) {

@@ -1,6 +1,6 @@
-use std::{collections::{HashMap, HashSet}, f32::INFINITY, ops::Add};
+use std::{collections::{HashMap}, f32::INFINITY};
 
-use crate::{board::{Board}, piece::Piece, position::Position, piece::PieceWrap};
+use crate::{board::Board, minimax::GameState, piece::{Piece, PieceWrap}, position::Position};
 
 const DIRECTIONS: [[[i32; 2]; 2]; 4] = [
 	[[-1, 0], [1, 0]], //x
@@ -9,12 +9,21 @@ const DIRECTIONS: [[[i32; 2]; 2]; 4] = [
 	[[-1, 1], [1, -1]], //trbl
 ];
 
+const CAPTURE_SCORES: [f32; 6] = [
+	0.0,
+	4.0,
+	8.0,
+	16.0,
+	32.0,
+	INFINITY
+];
+
 const B0_SCORES: [f32; 6] = [
 	1.0,
 	2.0,
 	4.0,
-	8.0,
 	16.0,
+	32.0,
 	INFINITY
 ];
 
@@ -23,7 +32,7 @@ const B1_SCORES: [f32; 6] = [
 	2.0,
 	3.0,
 	4.0,
-	5.0,
+	16.0,
 	INFINITY
 ];
 
@@ -83,6 +92,7 @@ impl Line {
 #[derive(Clone)]
 pub struct Heuristic<'a> {
 	board: &'a Board,
+	captures: &'a [usize; 2],
 	lines: HashMap<usize, Line>,
 	lines_idx: usize,
 	line_pos: HashMap<Position, [usize; 4]>,
@@ -90,13 +100,32 @@ pub struct Heuristic<'a> {
 }
 
 impl Heuristic<'_> {
-	pub fn from_board(board: &Board) -> Heuristic {
+	pub fn from_game_state(state: &GameState) -> Heuristic {
 		Heuristic {
 			lines_idx: 1,
-			board: board,
+			board: &state.board,
+			captures: &state.captures,
 			lines: HashMap::with_capacity(1),
 			line_pos: HashMap::new(),
 			score: None,
+		}
+	}
+
+	pub fn from_board(board: &Board) -> Heuristic {
+		Heuristic {
+			lines_idx: 1,
+			board: &board,
+			captures: &[0, 0],
+			lines: HashMap::with_capacity(1),
+			line_pos: HashMap::new(),
+			score: None,
+		}
+	}
+	
+	fn calculate_captures(value: &usize) -> f32 {
+		match value {
+			0..=5 => CAPTURE_SCORES[*value],
+			_ => panic!()
 		}
 	}
 
@@ -249,6 +278,10 @@ impl Heuristic<'_> {
 
 	pub fn get_heuristic(&mut self) -> f32 {
 		let mut scores = [0.0, 0.0];
+		let capture_scores = [
+			Self::calculate_captures(&self.captures[Piece::Max as usize]), 
+			Self::calculate_captures(&self.captures[Piece::Min as usize]), 	
+		];
 	
 		self.evaluate_positions();
 
@@ -271,7 +304,13 @@ impl Heuristic<'_> {
 			}
 		}
 
-		self.score = Some(scores[0] - scores[1] + solo_scores);
+		println!("{} {} {} {} {}", scores[0], scores[1], solo_scores, capture_scores[0], capture_scores[1]);
+
+		self.score = Some(
+			scores[0] + scores[1] + 
+			solo_scores + 
+			capture_scores[0] - capture_scores[1]
+		);
 
 		// for line in &self.lines {
 		// 	println!("LN: {} {} L:{} S:{} B:{}", line.1.start, line.1.end, line.1.length, line.1.score, line.1.block_pos);
@@ -354,7 +393,7 @@ impl Heuristic<'_> {
 		return Ok((evaluation, captures));
 	}
 
-	pub fn get_moves(&self, player: Piece, pos_moves: &[HashSet<Position>; 2]) -> Vec<(Position, (f32, u8))> {
+	pub fn get_moves(&self, player: Piece) -> Vec<(Position, (f32, u8))> {
 		let mut moves = HashMap::<Position, (f32, u8)>::with_capacity(50);
 		
 		for pos in self.board.into_iter() {
@@ -368,7 +407,6 @@ impl Heuristic<'_> {
 
 					if (x == 0 && y == 0) || 
 						check_pos.relocate(x, y).is_err() ||
-						pos_moves[player as usize].contains(&check_pos) == false ||
 						self.board[&check_pos].is_piece()
 					{
 						continue;
@@ -387,7 +425,7 @@ impl Heuristic<'_> {
 
 					let pos_score = Self::get_position_score(check_pos) / 4.0;
 
-					if (player == Piece::Max) {
+					if player == Piece::Max {
 						eval.0 += pos_score;
 					} else {
 						eval.0 -= pos_score;
@@ -402,7 +440,7 @@ impl Heuristic<'_> {
 
 		let mut arr: Vec<(Position, (f32, u8))> = moves.into_iter().map(|f| (f.0, f.1)).collect();
 
-		if (player.is_max()) {
+		if player.is_max() {
 			arr.sort_by(|a, b| b.1.0.total_cmp(&a.1.0));
 		} else {
 			arr.sort_by(|a, b| a.1.0.total_cmp(&b.1.0));

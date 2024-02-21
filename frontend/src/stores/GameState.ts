@@ -12,12 +12,19 @@ export interface GameState {
 	score: number;
 	moves: number[][];
 	predictedMoves: number[];
-	piecesTaken: number[];
+	captures: number[];
 }
 
 export interface EvalState {
 	boardScore: number
 	moves: [{x: number, y: number}, number[]][]
+}
+
+export interface BoardUpdateResponse {
+	board: {
+		data: number[]
+	},
+	captures: number[]
 }
 
 export interface CalculationResponse {
@@ -35,13 +42,15 @@ export interface CalculationResponse {
 export const useGameStateStore = defineStore("gameState", () => {
 	const stateHistory = ref<GameState[]>([]);
 
+	const moveHistory = ref<{0: number, 1: number, responseTime: number}[]>([]);
+
 	const currentState = ref<GameState>({
 		score: 0,
 		currentTurn: 0,
 		board: {},
 		moves: [],
 		predictedMoves: [],
-		piecesTaken: [0, 0]
+		captures: [0, 0]
 	});
 
 	const depth = ref(4);
@@ -53,20 +62,21 @@ export const useGameStateStore = defineStore("gameState", () => {
 
 	const editState = ref<Partial<EvalState>>();
 
-	ws.emitter.on('boardUpdate', (b: {data: number[]}) => {
+	ws.emitter.on('boardUpdate', (b: BoardUpdateResponse) => {
 		let newBoard = {} as Board;
 
 		console.log(b);
 
-		for (let i = 0; i < b.data.length; i++) {
-			if (b.data[i] == -1) continue;
+		for (let i = 0; i < b.board.data.length; i++) {
+			if (b.board.data[i] == -1) continue;
 
-			newBoard[i] = b.data[i]
+			newBoard[i] = b.board.data[i]
 		}
 
 		console.log(newBoard);
 
 		currentState.value.board = newBoard;
+		currentState.value.captures = b.captures;
 	})
 
 	async function submitEdit() {
@@ -90,6 +100,8 @@ export const useGameStateStore = defineStore("gameState", () => {
 		let response = {} as CalculationResponse;
 
 		const move_push = [move];
+
+		let timerStart = performance.now();
 		response = await ws.sendMessage<CalculationResponse>("calculate", {
 			depth: depth.value,
 			board: currentState.value.board,
@@ -99,7 +111,10 @@ export const useGameStateStore = defineStore("gameState", () => {
 				y: Math.floor(move / 19)
 			},
 			player: 0,
+			captures: currentState.value.captures
 		});
+		let timerEnd = performance.now();
+
 		console.log(response);
 		const aiMove = response.moves.shift()!;
 	
@@ -120,10 +135,16 @@ export const useGameStateStore = defineStore("gameState", () => {
 
 		currentState.value.predictedMoves = response.moves;
 
+		moveHistory.value.push({
+			0: move_push[0],
+			1: move_push[1],
+			responseTime: timerEnd - timerStart 
+		})
+
 		return response;
 	}
 
-	return { currentState, stateHistory, submitMove, isEditMode, depth, submitEdit, editState, editSettings };
+	return { currentState, stateHistory, submitMove, isEditMode, depth, submitEdit, editState, editSettings, moveHistory };
 });
 
 export function getHumanPosition(pos: number) {

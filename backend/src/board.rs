@@ -45,28 +45,32 @@ impl Board {
 		let mut rv = 0;
 
 		for (i, direction) in directions.iter().enumerate() {
-			if pos.clone().relocate(direction[0][0], direction[0][1]).is_ok_and(|f| board[&f].is_opposite(&player)) &&
-				pos.clone().relocate(direction[1][0], direction[1][1]).is_ok_and(|f| board[&f].is_opposite(&player)) &&
+			if pos.clone().relocate(direction[0][0], direction[0][1]).is_ok_and(|f| board[&f] == player.get_opposite()) &&
+				pos.clone().relocate(direction[1][0], direction[1][1]).is_ok_and(|f| board[&f] == player.get_opposite()) &&
 				pos.clone().relocate(direction[2][0], direction[2][1]).is_ok_and(|f| board[&f].is_equal(&player)) {
 				rv |= 1u8 << i;
 			}
 		}
 
-		println!("GET CAPTURES RES: {}", rv);
+		println!("GET CAPTURES RES: {}, P: {}", rv, pos);
 
 		return rv;
 	}
 
-	pub fn set_move(&mut self, pos: Position, player: Piece, capture_map: Option<u8>) -> &Board {
+	pub fn set_move(&mut self, pos: Position, player: Piece, capture_map: Option<u8>) -> usize {
+		if self[&pos].is_piece() {
+			panic!();
+		}
+
 		self[&pos] = player;
 
 		if capture_map.is_some_and(|x| x == 0) {
-			return self;
+			return 0;
 		}
 
 		let mut captures = capture_map.unwrap_or_else(|| Self::get_captures(&self, pos, player));
 
-		println!("C: {}", captures);
+		let mut capture_count = 0;
 
 		let maps = [
 			[[-1, 0], [-2, 0]],
@@ -87,22 +91,22 @@ impl Board {
 
 				// println!("TAKING FOR IDX {} MOVE {}", map_idx, pos);
 
-				if (
-					pos.clone().relocate(map[0][0], map[0][1]).is_ok_and(|x| self.data[x.x + x.y * 19] == player.get_opposite()) && 
-					pos.clone().relocate(map[1][0], map[1][1]).is_ok_and(|x| self.data[x.x + x.y * 19] == player.get_opposite())
-				) {
+				if pos.clone().relocate(map[0][0], map[0][1]).is_ok_and(|x| self.data[x.x + x.y * 19] == player.get_opposite()) && 
+					pos.clone().relocate(map[1][0], map[1][1]).is_ok_and(|x| self.data[x.x + x.y * 19] == player.get_opposite()) {
 					self[&pos.clone().relocate(map[0][0], map[0][1]).unwrap()] = Piece::Empty;
 					self[&pos.clone().relocate(map[1][0], map[1][1]).unwrap()] = Piece::Empty;
 				} else {
 					panic!();
 				}
 
+				capture_count += 1;
+
 			}
 			captures >>= 1;
 			map_idx += 1;
 		}
 
-		self
+		capture_count
 	}
 
 	pub fn get(&self, x: usize, y: usize) -> &Piece {

@@ -3,7 +3,7 @@ use std::{net::TcpStream, thread};
 use minimax::Move;
 use piece::PieceWrap;
 use position::Position;
-use serde_json::{json, Value};
+use serde_json::{Value};
 use websocket::sync::{Server, Writer};
 use websocket::OwnedMessage;
 use serde::{Deserialize, Serialize};
@@ -36,7 +36,8 @@ pub struct CalculateRequest {
 	depth: usize,
 	turn_idx: u8,
 	in_move: Option<Position>,
-	player: Piece
+	player: Piece,
+	captures: [usize; 2],
 }
 
 #[derive(Serialize, Deserialize)]
@@ -45,6 +46,13 @@ struct CalculationResponse
 	moves: Vec<MoveFlat>,
 	depth_hits: Vec<usize>,
 	score: f32,
+}
+
+#[derive(Serialize)]
+struct BoardUpdateResponse<'a>
+{
+	board: &'a Board,
+	captures: [usize; 2],
 }
 
 #[derive(Serialize, Deserialize)]
@@ -89,7 +97,7 @@ fn get_moves(res: &Move) -> Vec<MoveFlat> {
 			cutoff_at: iter.cutoff_at
 		});
 
-		if (iter.child.is_some()) {
+		if iter.child.is_some() {
 			iter = iter.child.as_ref().unwrap().as_ref();
 		} else {
 			break;
@@ -108,7 +116,10 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 		serde_json::to_string(&WSMessage{
 			requestId: None,
 			subject: "boardUpdate".to_string(),
-			data: serde_json::to_value(&solver.board).unwrap()
+			data: serde_json::to_value(&BoardUpdateResponse {
+				board: &solver.board,
+				captures: solver.captures
+			}).unwrap()
 		}).unwrap()
 	)).unwrap();
 
@@ -116,17 +127,25 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 
 	let mut new_board = solver.board.clone();
 	
-	new_board.set_move(
+	let capture_count = new_board.set_move(
 		result.position,
 		request.player.get_opposite(), None);
 
-		sender.send_message(&OwnedMessage::Text(
-			serde_json::to_string(&WSMessage{
-				requestId: None,
-				subject: "boardUpdate".to_string(),
-				data: serde_json::to_value(&new_board).unwrap()
+	let captures = [
+			if request.player.get_opposite() == Piece::Max {solver.captures[0] + capture_count} else {solver.captures[0]}, 
+			if request.player.get_opposite() == Piece::Min {solver.captures[1] + capture_count} else {solver.captures[1]}
+	];
+
+	sender.send_message(&OwnedMessage::Text(
+		serde_json::to_string(&WSMessage{
+			requestId: None,
+			subject: "boardUpdate".to_string(),
+			data: serde_json::to_value(&BoardUpdateResponse {
+				board: &new_board,
+				captures: captures
 			}).unwrap()
-		)).unwrap();
+		}).unwrap()
+	)).unwrap();
 
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage{
@@ -161,7 +180,7 @@ fn main() {
 			let (mut receiver, mut sender) = client.split().unwrap();
 
 			let mut old_board = Board::new();
-			let mut moves = MoveCalculator::new(&old_board);
+			let _moves = MoveCalculator::new(&old_board);
 
 			for message in receiver.incoming_messages() {
 				let message = message.unwrap();
@@ -186,16 +205,14 @@ fn main() {
 							let request: EvalRequest = serde_json::from_value(message.data).unwrap();
 							let board = Board::from_map(&request.board);
 
-							moves = MoveCalculator::new(&board);
-
-							println!("Positions evaluated: {} PM_MX: {} PM_MN: {}", moves.positions_checked, moves.moves[0].len(),
-							moves.moves[1].len()
-						);
-
 							let mut heuristic = Heuristic::from_board(&board);
 
 							let board_score = heuristic.get_heuristic();
-							let moves = heuristic.get_moves(request.player, &moves.moves);
+							let mut moves = heuristic.get_moves(request.player);
+
+							for i in 0..moves.len() {
+								moves[i].1.0 = resolve_infinity(moves[i].1.0);
+							}
 
 							println!("Evaluating done");
 
