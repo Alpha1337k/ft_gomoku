@@ -12,12 +12,6 @@ const DIRECTIONS: [[[i32; 2]; 2]; 4] = [
 ];
 
 #[derive(Serialize, Deserialize)]
-pub struct Move {
-	pub position: Position,
-	pub piece: Piece
-}
-
-#[derive(Serialize, Deserialize)]
 pub struct MoveCalculator {
 	pub positions_checked: usize,
 	pub moves: [HashSet<Position>; 2]
@@ -44,53 +38,6 @@ impl MoveCalculator {
 		}
 
 		return new_calc
-	}
-
-	pub fn from_calculator(old: &MoveCalculator, board: &Board, delta: Vec<Move>) -> MoveCalculator {
-		let mut new_calc = MoveCalculator{
-			moves: old.moves.clone(),
-			positions_checked: 0,
-		};
-
-		let mut checkable_positions = HashSet::<Position>::with_capacity(delta.len() * 25);
-
-		for d in delta {
-			for x in -1..2 {
-				for y in -1..2 {
-					if x == 0 && y == 0 && d.piece != Piece::Empty {
-						continue;
-					}
-
-					let mut new_pos = d.position.clone();
-
-					if new_pos.relocate(x, y).is_err() {
-						continue;
-					}
-
-					if (board[&new_pos].is_piece()) {
-						continue;
-					}
-
-					checkable_positions.insert(new_pos);
-				}	
-			}
-		}
-
-		for pos in checkable_positions {
-			if new_calc.validate_virtual_move(pos, Piece::Max, board) {
-				new_calc.moves[Piece::Max as usize].insert(pos);
-			} else {
-				new_calc.moves[Piece::Max as usize].remove(&pos);
-			}
-			if new_calc.validate_virtual_move(pos, Piece::Min, board) {
-				new_calc.moves[Piece::Min as usize].insert(pos);
-			} else {
-				new_calc.moves[Piece::Min as usize].remove(&pos);
-			}
-		}
-
-		
-		return new_calc;
 	}
 
 	fn match_pattern(&self,

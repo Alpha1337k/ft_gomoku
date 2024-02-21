@@ -1,5 +1,6 @@
 use std::{net::TcpStream, thread};
 
+use minimax::Move;
 use piece::PieceWrap;
 use position::Position;
 use serde_json::{json, Value};
@@ -7,7 +8,7 @@ use websocket::sync::{Server, Writer};
 use websocket::OwnedMessage;
 use serde::{Deserialize, Serialize};
 
-use crate::{board::Board, heuristic::Heuristic, minimax::GomokuSolver, move_calculator::{Move, MoveCalculator}, piece::Piece};
+use crate::{board::Board, heuristic::Heuristic, minimax::GomokuSolver, move_calculator::{MoveCalculator}, piece::Piece};
 mod minimax;
 mod board;
 mod position;
@@ -21,12 +22,6 @@ pub struct WSMessage
 	subject: String,
 	requestId: Option<String>,
 	data: serde_json::Value
-}
-
-#[derive(Deserialize)]
-pub struct MoveRequest {
-	delta: Vec<Move>,
-	board: serde_json::Map<String, Value>
 }
 
 #[derive(Deserialize)]
@@ -47,7 +42,8 @@ pub struct CalculateRequest {
 #[derive(Serialize, Deserialize)]
 struct CalculationResponse
 {
-	moves: Vec<u64>,
+	moves: Vec<MoveFlat>,
+	depth_hits: Vec<usize>,
 	score: f32,
 }
 
@@ -56,6 +52,14 @@ struct EvaluationResponse
 {
 	moves: Vec<(Position, (f32, u8))>,
 	boardScore: f32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MoveFlat {
+	pub score: f32,
+	pub position: Position,
+	pub order_idx: usize,
+	pub cutoff_at: usize,
 }
 
 // json not supporting infinity. Using magic numbers
@@ -69,6 +73,30 @@ fn resolve_infinity(val: f32) -> f32 {
 		}
 	}
 	return val;
+}
+
+fn get_moves(res: &Move) -> Vec<MoveFlat> {
+	let mut iter = res;
+
+	let mut moves = Vec::<MoveFlat>::new();
+
+	loop {
+		println!("M: {}", iter.position);
+		moves.push(MoveFlat {
+			order_idx: iter.order_idx,
+			position: iter.position,
+			score: iter.score,
+			cutoff_at: iter.cutoff_at
+		});
+
+		if (iter.child.is_some()) {
+			iter = iter.child.as_ref().unwrap().as_ref();
+		} else {
+			break;
+		}
+	}
+
+	return moves;
 }
 
 fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) {
@@ -89,7 +117,7 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 	let mut new_board = solver.board.clone();
 	
 	new_board.set_move(
-		*result.1.first().unwrap(),
+		result.position,
 		request.player.get_opposite(), None);
 
 		sender.send_message(&OwnedMessage::Text(
@@ -105,8 +133,9 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 			requestId: request_id,
 			subject: "calculate".to_string(),
 			data: serde_json::to_value(CalculationResponse{
-				score: resolve_infinity(result.0),
-				moves: result.1.iter().map(|x| x.to_u64()).collect(),
+				score: resolve_infinity(result.score),
+				depth_hits: solver.depth_entries,
+				moves: get_moves(&result),
 			}).unwrap()
 		}).unwrap()
 	)).unwrap();
@@ -180,19 +209,6 @@ fn main() {
 										boardScore: resolve_infinity(board_score),
 										moves: moves
 									}).unwrap()
-								}).unwrap()
-							)).unwrap();
-						} else if message.subject == "moves" {
-							let request: MoveRequest = serde_json::from_value(message.data).unwrap();
-							let board = Board::from_map(&request.board);
-
-							moves = MoveCalculator::from_calculator(&moves, &board, request.delta);
-
-							sender.send_message(&OwnedMessage::Text(
-								serde_json::to_string(&WSMessage{
-									requestId: message.requestId,
-									subject: "moves".to_string(),
-									data: serde_json::to_value(&moves).unwrap()
 								}).unwrap()
 							)).unwrap();
 						}

@@ -1,16 +1,25 @@
 use std::{f32::{INFINITY}, io::Error};
 
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 
 use crate::{board::Board, heuristic::Heuristic, move_calculator::{self, MoveCalculator}, piece::{Piece, PieceWrap}, position::Position, CalculateRequest, WSMessage};
+
+pub struct Move {
+	pub score: f32,
+	pub position: Position,
+	pub order_idx: usize,
+	pub cutoff_at: usize,
+	pub child: Option<Box<Move>>,
+}
 
 pub struct GomokuSolver
 {
 	pub board: Board,
 	turn_idx: u8,
 	depth: usize,
-	depth_zero_hits: usize
+	pub depth_entries: Vec<usize>
 }
 
 impl GomokuSolver {
@@ -19,7 +28,7 @@ impl GomokuSolver {
 		let mut solver = GomokuSolver{
 			board: Board::from_map(&msg.board),
 			turn_idx: msg.turn_idx,
-			depth_zero_hits: 0,
+			depth_entries: vec![0; msg.depth + 1],
 			depth: msg.depth,
 		};
 
@@ -30,88 +39,100 @@ impl GomokuSolver {
 		return solver;
 	}
 
-	fn minimax(&mut self, depth: usize, board: &Board, mut alpha: f32, mut beta: f32, player: Piece) -> (f32, Vec<Position>)
+	fn minimax(&mut self, depth: usize, board: &Board, mut alpha: f32, mut beta: f32, player: Piece) -> Move
 	{
-		let mut moves = Vec::<Position>::with_capacity(depth);
+		let mut move_store = Move {
+			child: None,
+			cutoff_at: 0,
+			score: if player == Piece::Max {-INFINITY} else {INFINITY},
+			order_idx: 0,
+			position: Position::new(0, 0)
+		};
+
 		let mut heuristic = Heuristic::from_board(board);
 
+
+		self.depth_entries[depth] += 1;
 		let heuristical_score = heuristic.get_heuristic();
 
 		if depth == 0 || heuristical_score.is_infinite() {
-			self.depth_zero_hits += 1;
-			return (heuristical_score, moves);
+			return Move {
+				child: None,
+				cutoff_at: 0,
+				score: heuristical_score,
+				order_idx: 0,
+				position: Position::new(0, 0)
+			};
 		}
 
 		let m_calc = MoveCalculator::new(&board);
-
 		let possible_moves = heuristic.get_moves(player, &m_calc.moves);
 
-		moves.push(Position::new(0, 0));
-
-		let mut val;
-		let opp_player = player.get_opposite();
-				
-		if player == Piece::Max {
-			val = -INFINITY;
-		} else {	
-			val = INFINITY;
-		}
-
-		for i in possible_moves {
+		for (i, pos_move) in possible_moves.iter().enumerate() {
 			let mut new_board = board.clone();
 
-			println!("M: {}", i.0);
+			// println!("MC: {}", pos_move.0);
 
-			new_board.set_move(i.0, player, Some(i.1.1));
+			new_board.set_move(pos_move.0, player, Some(pos_move.1.1));
 
-			let mut node_result = self.minimax(depth - 1, &new_board, alpha, beta, opp_player);
+			let mut node_result = self.minimax(depth - 1, &new_board, alpha, beta, player.get_opposite());
 
 			if depth == self.depth {
-				println!("RES D: {}: pos: {} V:{}", self.depth, i.0, node_result.0);
+				println!("RES D: {}: pos: {} PRED: {} V:{}", self.depth, pos_move.0, pos_move.1.0, node_result.score);
 			}
 
 			if player.is_max() {
-				if node_result.0 > val {
-					val = node_result.0;
-					moves.truncate(1);
-					moves[0] = i.0;
-					moves.append(&mut node_result.1);
+				if node_result.score > move_store.score {
+					move_store.score = node_result.score;
+					move_store.position = pos_move.0;
+					move_store.order_idx = i;
+					move_store.child = Some(Box::new(node_result));
 				}
 
-				alpha = alpha.max(val);
+				alpha = alpha.max(move_store.score);
 
-				if val > beta {
+				if move_store.score > beta {
+					move_store.cutoff_at = i;
 					break;
 				}
 			} else {
-				if node_result.0 < val {
-					val = node_result.0;
-					moves.truncate(1);
-					moves[0] = i.0;
-					moves.append(&mut node_result.1);
+				if node_result.score < move_store.score {
+					move_store.score = node_result.score;
+					move_store.position = pos_move.0;
+					move_store.order_idx = i;
+					move_store.child = Some(Box::new(node_result));
 				}
 
-				beta = beta.min(val);
+				beta = beta.min(move_store.score);
 
-				if val < alpha {
+				if move_store.score < alpha {
+					move_store.cutoff_at = i;
 					break;
 				}
 			}
 
 		}
-		return (val, moves);
+		return move_store;
 	}
 
-	pub fn solve<'a>(&mut self) -> Result<(f32, Vec<Position>), Error>
+	pub fn solve<'a>(&mut self) -> Result<Move, Error>
 	{
 		println!("Starting minimax..");
 
-		let res = self.minimax(self.depth, &self.board.clone(), -INFINITY, INFINITY, ((self.turn_idx % 2) as u64).try_into().unwrap());
+		let res = self.minimax(self.depth, &self.board.clone(), -INFINITY, INFINITY, Piece::Min);
 
-		for m in &res.1 {
-			println!("M: {}", m);
+		let mut iter = &res;
+
+		loop {
+			println!("M: {}", iter.position);
+			if (iter.child.is_some()) {
+				iter = iter.child.as_ref().unwrap().as_ref();
+			} else {
+				break;
+			}
 		}
-		println!("SCORE: {}", res.0);
+
+		println!("SCORE: {}", res.score);
 
 		return Ok(res);
 	}

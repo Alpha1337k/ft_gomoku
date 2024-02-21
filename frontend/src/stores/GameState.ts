@@ -21,7 +21,14 @@ export interface EvalState {
 }
 
 export interface CalculationResponse {
-	moves: number[];
+	moves: {
+		position: {
+			x: number,
+			y: number
+		},
+		order_idx: number,
+		score: number
+	}[];
 	score: number;
 }
 
@@ -97,7 +104,7 @@ export const useGameStateStore = defineStore("gameState", () => {
 		const aiMove = response.moves.shift()!;
 	
 		if (aiMove) {
-			move_push.push(aiMove);
+			move_push.push(aiMove.position.x + aiMove.position.y * 19);
 			currentState.value.currentTurn = 0;
 		}
 

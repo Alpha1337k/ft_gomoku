@@ -3,7 +3,7 @@
 
 use serde::Serialize;
 use serde_json::Value;
-use crate::{move_calculator::Move, piece::{Piece, PieceWrap}, position::Position};
+use crate::{piece::{Piece, PieceWrap}, position::Position};
 
 #[derive(Clone, Serialize)]
 pub struct Board {
@@ -30,27 +30,12 @@ impl Board {
 		return board;
 	}
 
-	pub fn get_delta(old: &Board, n: &Board) -> Vec<Move> {
-		let mut rv = Vec::new();
-		
-		for pos in old {
-			if old[&pos] != n[&pos] {
-				rv.push(Move{
-					position: pos,
-					piece: n[&pos]
-				})
-			}
-		}
-
-		return rv;
-	}
-
 	pub fn get_captures(board: &Board, pos: Position, player: Piece) -> u8 {
 		let directions = [
 			[[-1, 0], [-2, 0], [-3, 0]],
 			[[1, 0], [2, 0], [3, 0]],
-			[[0, 1], [0, 2], [0, 3]],
 			[[0, -1], [0, -2], [0, -3]],
+			[[0, 1], [0, 2], [0, 3]],
 			[[-1, -1], [-2, -2], [-3, -3]],
 			[[1, 1], [2, 2], [3, 3]],
 			[[-1, 1], [-2, 2], [-3, 3]],
@@ -67,6 +52,8 @@ impl Board {
 			}
 		}
 
+		println!("GET CAPTURES RES: {}", rv);
+
 		return rv;
 	}
 
@@ -78,6 +65,8 @@ impl Board {
 		}
 
 		let mut captures = capture_map.unwrap_or_else(|| Self::get_captures(&self, pos, player));
+
+		println!("C: {}", captures);
 
 		let maps = [
 			[[-1, 0], [-2, 0]],
@@ -96,11 +85,11 @@ impl Board {
 			if needs_capture == 1 {
 				let map = maps[map_idx];
 
-				println!("TAKING FOR IDX {} MOVE {}", map_idx, pos);
+				// println!("TAKING FOR IDX {} MOVE {}", map_idx, pos);
 
 				if (
-					pos.clone().relocate(map[0][0], map[0][1]).is_ok_and(|x| self.data[x.x + x.y * 19].is_opposite(&player)) && 
-					pos.clone().relocate(map[1][0], map[1][1]).is_ok_and(|x| self.data[x.x + x.y * 19].is_opposite(&player))
+					pos.clone().relocate(map[0][0], map[0][1]).is_ok_and(|x| self.data[x.x + x.y * 19] == player.get_opposite()) && 
+					pos.clone().relocate(map[1][0], map[1][1]).is_ok_and(|x| self.data[x.x + x.y * 19] == player.get_opposite())
 				) {
 					self[&pos.clone().relocate(map[0][0], map[0][1]).unwrap()] = Piece::Empty;
 					self[&pos.clone().relocate(map[1][0], map[1][1]).unwrap()] = Piece::Empty;

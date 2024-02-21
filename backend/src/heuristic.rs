@@ -383,7 +383,15 @@ impl Heuristic<'_> {
 					// 	continue;
 					// }
 
-					let eval = self.evaluate_virtual_move(check_pos, player).unwrap();
+					let mut eval = self.evaluate_virtual_move(check_pos, player).unwrap();
+
+					let pos_score = Self::get_position_score(check_pos) / 4.0;
+
+					if (player == Piece::Max) {
+						eval.0 += pos_score;
+					} else {
+						eval.0 -= pos_score;
+					}
 
 					// println!("--- RESULT=MOVE {} Score={} ({})", check_pos, eval.0, eval.1);
 
@@ -394,15 +402,15 @@ impl Heuristic<'_> {
 
 		let mut arr: Vec<(Position, (f32, u8))> = moves.into_iter().map(|f| (f.0, f.1)).collect();
 
-		if player == Piece::Max {
+		if (player.is_max()) {
 			arr.sort_by(|a, b| b.1.0.total_cmp(&a.1.0));
 		} else {
 			arr.sort_by(|a, b| a.1.0.total_cmp(&b.1.0));
 		}
 
-		for m in &arr {
-			println!("L: {} {:#010b}", m.0, m.1.1);
-		}
+		// for m in &arr {
+		// 	println!("L: {} {:#010b}", m.0, m.1.1);
+		// }
 		return arr;
 	}
 }
