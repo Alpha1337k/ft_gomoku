@@ -44,7 +44,7 @@
 					</p>
 				</div>
 				<p class="text-xs text-slate-600">
-					{{ moves.responseTime.toFixed(0) }} ms
+					{{ moves.responseTime?.toFixed(0) || '?' }} ms
 				</p>
 			</div>
 		</div>

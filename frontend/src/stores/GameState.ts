@@ -99,6 +99,14 @@ export const useGameStateStore = defineStore("gameState", () => {
 	async function submitMove(move: number) {
 		let response = {} as CalculationResponse;
 
+		const newMove = {
+			0: move,
+			1: undefined,
+			responseTime: undefined
+		} as any
+
+		moveHistory.value.push(newMove);
+
 		const move_push = [move];
 
 		let timerStart = performance.now();
@@ -124,6 +132,8 @@ export const useGameStateStore = defineStore("gameState", () => {
 		}
 
 		currentState.value.moves.push(move_push);
+		newMove[1] = move_push[1];
+		newMove.responseTime = timerEnd - timerStart 
 
 		if (response.score == 1234) {
 			currentState.value.score = Infinity;
@@ -135,11 +145,6 @@ export const useGameStateStore = defineStore("gameState", () => {
 
 		currentState.value.predictedMoves = response.moves;
 
-		moveHistory.value.push({
-			0: move_push[0],
-			1: move_push[1],
-			responseTime: timerEnd - timerStart 
-		})
 
 		return response;
 	}

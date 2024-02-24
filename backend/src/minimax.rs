@@ -102,7 +102,7 @@ impl GomokuSolver {
 			}
 
 			if state.player.is_max() {
-				if node_result.score > move_store.score {
+				if node_result.score >= move_store.score {
 					move_store.score = node_result.score;
 					move_store.position = pos_move.0;
 					move_store.order_idx = i;
@@ -111,12 +111,12 @@ impl GomokuSolver {
 
 				alpha = alpha.max(move_store.score);
 
-				if move_store.score > beta {
+				if move_store.score > beta || move_store.score == INFINITY {
 					move_store.cutoff_at = i;
 					break;
 				}
 			} else {
-				if node_result.score < move_store.score {
+				if node_result.score <= move_store.score {
 					move_store.score = node_result.score;
 					move_store.position = pos_move.0;
 					move_store.order_idx = i;
@@ -125,7 +125,7 @@ impl GomokuSolver {
 
 				beta = beta.min(move_store.score);
 
-				if move_store.score < alpha {
+				if move_store.score < alpha || move_store.score == -INFINITY {
 					move_store.cutoff_at = i;
 					break;
 				}

@@ -16,17 +16,14 @@
 					v-for="i in 361"
 					:key="i"
 					:class="[i % 2 == 0 ? 'bg-black' : 'bg-slate-800']"
-					class="cursor-pointer flex items-center justify-center"
+					class="cursor-pointer flex items-center justify-center h-12"
 					@mouseover="hoverPos = i - 1"
 					@mouseleave="hoverPos = undefined"
 					@click="handleClick($event, i - 1)"
 					@contextmenu.prevent="handleRightClick(i - 1)"
 				>
-					<div v-if="boardPositions[i - 1] === 0" class="rounded-xl bg-blue-800 h-5/6 w-5/6"></div>
-					<div v-else-if="boardPositions[i - 1] === 1" class="rounded-xl bg-red-800 h-5/6 w-5/6"></div>
-					<div v-else-if="hoverPos == i - 1 && ctrlPressed == false" class="rounded-xl bg-blue-800/75 h-5/6 w-5/6"></div>
-					<div v-else-if="hoverPos == i - 1 && ctrlPressed == true" class="rounded-xl bg-red-800/75 h-5/6 w-5/6"></div>
-					<div v-else="evalPrioMap[i -1 ] != undefined" class="h-5/6 w-5/6">
+					<div v-if="evalPrioMap[i -1 ] == undefined" :class="getColor(i - 1)" class="rounded-xl h-5/6 w-5/6"></div>
+					<div v-else-if="evalPrioMap[i -1 ]" class="h-5/6 w-5/6">
 							<p class="text-white h-10 mx-auto text-center">{{ evalPrioMap[i -1 ]?.idx }}</p>
 							<p class="h-10 mx-auto text-center absolute text-sm text-gray-400 -mt-5 ml-1">{{ resolveScore(evalPrioMap[i -1 ]?.score) }}</p>
 					</div>			
@@ -94,7 +91,7 @@ function handleRightClick(pos: number) {
 }
 
 function resolveScore(v: number): string {
-	if (v === undefined) {
+	if (v === undefined || v === null) {
 		return ''
 	}
 
@@ -104,6 +101,36 @@ function resolveScore(v: number): string {
 		return "-Inf";
 	}
 	return v.toPrecision(3).substring(0,4)
+}
+
+function getColor(pos: number) {
+	if (props.boardPositions[pos] === 0) {
+		if (gameState.moveHistory[gameState.moveHistory.length - 1]?.[0] === pos) {
+			return "bg-blue-500"
+		} else {
+			return "bg-blue-800"
+		}
+	}
+	if (props.boardPositions[pos] === 1) {
+		if (
+			(gameState.moveHistory[gameState.moveHistory.length - 1][1] !== undefined && 
+				gameState.moveHistory[gameState.moveHistory.length - 1][1] === pos 
+			) || 
+			(gameState.moveHistory[gameState.moveHistory.length - 1][1] === undefined && 
+				gameState.moveHistory[gameState.moveHistory.length - 2]?.[1] === pos 
+			)
+		) {
+			return "bg-red-700"
+		} else {
+			return "bg-red-800"
+		}
+	}
+	if (hoverPos.value == pos && ctrlPressed.value == false) {
+		return "bg-blue-800/75";
+	}
+	if (hoverPos.value == pos && ctrlPressed.value == true) {
+		return "bg-red-800/75";
+	}
 }
 
 function handleClick(event: PointerEvent, pos: number) {

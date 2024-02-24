@@ -50,6 +50,12 @@ struct LineResult {
 	blocked: bool,
 }
 
+struct EvaluationScore {
+	score: f32,
+	capture_map: u8,
+	capture_count: usize
+}
+
 #[derive(Clone)]
 struct Line {
 	id: usize,
@@ -304,7 +310,7 @@ impl Heuristic<'_> {
 			}
 		}
 
-		println!("{} {} {} {} {}", scores[0], scores[1], solo_scores, capture_scores[0], capture_scores[1]);
+		// println!("{} {} {} {} {}", scores[0], scores[1], solo_scores, capture_scores[0], capture_scores[1]);
 
 		self.score = Some(
 			scores[0] + scores[1] + 

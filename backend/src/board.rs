@@ -39,7 +39,7 @@ impl Board {
 			[[-1, -1], [-2, -2], [-3, -3]],
 			[[1, 1], [2, 2], [3, 3]],
 			[[-1, 1], [-2, 2], [-3, 3]],
-			[[1, 1], [2, -2], [3, -3]],
+			[[1, -1], [2, -2], [3, -3]],
 		];
 
 		let mut rv = 0;
@@ -91,8 +91,8 @@ impl Board {
 
 				// println!("TAKING FOR IDX {} MOVE {}", map_idx, pos);
 
-				if pos.clone().relocate(map[0][0], map[0][1]).is_ok_and(|x| self.data[x.x + x.y * 19] == player.get_opposite()) && 
-					pos.clone().relocate(map[1][0], map[1][1]).is_ok_and(|x| self.data[x.x + x.y * 19] == player.get_opposite()) {
+				if pos.clone().relocate(map[0][0], map[0][1]).is_ok_and(|x| self[x] == player.get_opposite()) && 
+					pos.clone().relocate(map[1][0], map[1][1]).is_ok_and(|x| self[x] == player.get_opposite()) {
 					self[&pos.clone().relocate(map[0][0], map[0][1]).unwrap()] = Piece::Empty;
 					self[&pos.clone().relocate(map[1][0], map[1][1]).unwrap()] = Piece::Empty;
 				} else {
