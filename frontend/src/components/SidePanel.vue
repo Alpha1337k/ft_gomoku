@@ -50,10 +50,10 @@
 		</div>
 		<div class="h-64 bg-slate-900 rounded-b-lg flex flex-col">
 			<div class="flex divide-x divide-slate-500">
-				<button @click="gameState.isEditMode = false; gameState.editState = {}" :class="{'bg-slate-700': !gameState.isEditMode}" class="hover:bg-slate-700 w-full  cursor-pointer p-2">
+				<button @click="gameState.setMode('play')" :class="{'bg-slate-700': !gameState.isEditMode}" class="hover:bg-slate-700 w-full  cursor-pointer p-2">
 					Play
 				</button>
-				<button @click="gameState.isEditMode = true; gameState.submitEdit()" :class="{'bg-slate-700': gameState.isEditMode}" class="hover:bg-slate-700 w-full  cursor-pointer p-2">
+				<button @click="gameState.setMode('edit')" :class="{'bg-slate-700': gameState.isEditMode}" class="hover:bg-slate-700 w-full  cursor-pointer p-2">
 					Edit
 				</button>
 			</div>

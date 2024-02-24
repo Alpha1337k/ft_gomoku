@@ -78,15 +78,18 @@ impl GomokuSolver {
 			};
 		}
 
-		// let m_calc = MoveCalculator::new(&board);
 		let possible_moves = heuristic.get_moves(state.player);
 
 		for (i, pos_move) in possible_moves.iter().enumerate() {
 			let mut new_board = state.board.clone();
 
+			if heuristic.validate_move(pos_move.0, state.player) == false {
+				continue;
+			}
+
 			// println!("MC: {}", pos_move.0);
 
-			let capture_count = new_board.set_move(pos_move.0, state.player, Some(pos_move.1.1));
+			let capture_count = new_board.set_move(pos_move.0, state.player, Some(pos_move.1.capture_map));
 
 			let node_result = self.minimax(depth - 1, &GameState {
 				board: new_board,
@@ -98,7 +101,7 @@ impl GomokuSolver {
 			}, alpha, beta);
 
 			if depth >= self.depth - 1 {
-				println!("RES D: {}: pos: {} PRED: {} V:{}", depth, pos_move.0, pos_move.1.0, node_result.score);
+				println!("RES D: {}: pos: {} PRED: {} V:{}", depth, pos_move.0, pos_move.1.score, node_result.score);
 			}
 
 			if state.player.is_max() {

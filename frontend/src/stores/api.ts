@@ -32,6 +32,7 @@ export class WebSocketAPI {
 		this.ws.onopen = (ev) => {
 			console.warn("WS Open: ", ev);
 			this.isOk = true;
+			this.emitter.emit('ready');
 			cb(true);
 		};
 

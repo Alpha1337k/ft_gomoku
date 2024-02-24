@@ -1,4 +1,4 @@
-use std::{collections::{HashMap}, f32::INFINITY};
+use std::{cmp::Ordering, collections::HashMap, f32::INFINITY};
 
 use crate::{board::Board, minimax::GameState, piece::{Piece, PieceWrap}, position::Position};
 
@@ -11,10 +11,10 @@ const DIRECTIONS: [[[i32; 2]; 2]; 4] = [
 
 const CAPTURE_SCORES: [f32; 6] = [
 	0.0,
-	4.0,
 	8.0,
 	16.0,
 	32.0,
+	64.0,
 	INFINITY
 ];
 
@@ -23,7 +23,7 @@ const B0_SCORES: [f32; 6] = [
 	2.0,
 	4.0,
 	16.0,
-	32.0,
+	64.0,
 	INFINITY
 ];
 
@@ -50,22 +50,22 @@ struct LineResult {
 	blocked: bool,
 }
 
-struct EvaluationScore {
-	score: f32,
-	capture_map: u8,
-	capture_count: usize
+pub struct EvaluationScore {
+	pub score: f32,
+	pub capture_map: u8,
+	pub capture_count: usize
 }
 
 #[derive(Clone)]
-struct Line {
-	id: usize,
-	start: Position,
-	end: Position,
-	length: usize,
-	direction: u8,
-	score: f32,
-	block_pos: u8,
-	player: Piece
+pub struct Line {
+	pub id: usize,
+	pub start: Position,
+	pub end: Position,
+	pub length: usize,
+	pub direction: u8,
+	pub score: f32,
+	pub block_pos: u8,
+	pub player: Piece
 }
 
 impl Line {
@@ -97,12 +97,12 @@ impl Line {
 
 #[derive(Clone)]
 pub struct Heuristic<'a> {
-	board: &'a Board,
-	captures: &'a [usize; 2],
-	lines: HashMap<usize, Line>,
-	lines_idx: usize,
-	line_pos: HashMap<Position, [usize; 4]>,
-	score: Option<f32>
+	pub board: &'a Board,
+	pub captures: &'a [usize; 2],
+	pub lines: HashMap<usize, Line>,
+	pub lines_idx: usize,
+	pub line_pos: HashMap<Position, [usize; 4]>,
+	pub score: Option<f32>
 }
 
 impl Heuristic<'_> {
@@ -325,10 +325,12 @@ impl Heuristic<'_> {
 		return self.score.unwrap();
 	}
 
-	pub fn evaluate_virtual_move(&self, pos: Position, player: Piece) -> Result<(f32, u8), &str> {
-
-		let mut evaluation = self.score.unwrap();
-		let mut captures = 0u8;
+	pub fn evaluate_virtual_move(&self, pos: Position, player: Piece) -> Result<EvaluationScore, &str> {
+		let mut result = EvaluationScore {
+			score: self.score.unwrap(),
+			capture_map: 0u8,
+			capture_count: 0,
+		};
 
 		// println!("LINES: {}", self.lines.len());
 
@@ -387,20 +389,22 @@ impl Heuristic<'_> {
 			new_calc += Line::calculate(blocks, length, player);
 		
 			if capture_map[0] {
-				captures |= 1u8 << (i * 2);
+				result.capture_map |= 1u8 << (i * 2);
+				result.capture_count += 1;
 			} else if capture_map[1] {
-				captures |= 1u8 << (i * 2) + 1;
+				result.capture_map |= 1u8 << (i * 2) + 1;
+				result.capture_count += 1;
 			}
 
 
-			evaluation += new_calc;
+			result.score += new_calc;
 		}
 
-		return Ok((evaluation, captures));
+		return Ok(result);
 	}
 
-	pub fn get_moves(&self, player: Piece) -> Vec<(Position, (f32, u8))> {
-		let mut moves = HashMap::<Position, (f32, u8)>::with_capacity(50);
+	pub fn get_moves(&self, player: Piece) -> Vec<(Position, EvaluationScore)> {
+		let mut moves = HashMap::<Position, EvaluationScore>::with_capacity(50);
 		
 		for pos in self.board.into_iter() {
 			if self.board[&pos].is_empty() {
@@ -432,9 +436,9 @@ impl Heuristic<'_> {
 					let pos_score = Self::get_position_score(check_pos) / 4.0;
 
 					if player == Piece::Max {
-						eval.0 += pos_score;
+						eval.score += pos_score;
 					} else {
-						eval.0 -= pos_score;
+						eval.score -= pos_score;
 					}
 
 					// println!("--- RESULT=MOVE {} Score={} ({})", check_pos, eval.0, eval.1);
@@ -444,13 +448,21 @@ impl Heuristic<'_> {
 			}
 		}
 
-		let mut arr: Vec<(Position, (f32, u8))> = moves.into_iter().map(|f| (f.0, f.1)).collect();
+		let mut arr: Vec<(Position, EvaluationScore)> = moves.into_iter().collect();
 
-		if player.is_max() {
-			arr.sort_by(|a, b| b.1.0.total_cmp(&a.1.0));
-		} else {
-			arr.sort_by(|a, b| a.1.0.total_cmp(&b.1.0));
-		}
+		arr.sort_by(|a, b| {
+			if a.1.capture_count > b.1.capture_count {
+				return Ordering::Less;
+			} else if a.1.capture_count < b.1.capture_count {
+				return Ordering::Greater;
+			}
+
+			if player == Piece::Max {
+				return b.1.score.total_cmp(&a.1.score);
+			} else {
+				return a.1.score.total_cmp(&b.1.score);
+			}
+		});
 
 		// for m in &arr {
 		// 	println!("L: {} {:#010b}", m.0, m.1.1);

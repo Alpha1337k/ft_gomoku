@@ -53,6 +53,18 @@ export const useGameStateStore = defineStore("gameState", () => {
 		captures: [0, 0]
 	});
 
+	const invalidMoves = ref<number[]>()
+
+	async function loadInvalidMoves() {
+		invalidMoves.value = undefined;
+		let moves: {x: number, y: number}[] = await ws.sendMessage("inv_moves", {
+			board: currentState.value.board,
+			player: 0,
+		})
+
+		invalidMoves.value = moves.map(x => x.x + x.y * 19);
+	}
+
 	const depth = ref(4);
 	
 	const isEditMode = ref(false);
@@ -77,6 +89,10 @@ export const useGameStateStore = defineStore("gameState", () => {
 
 		currentState.value.board = newBoard;
 		currentState.value.captures = b.captures;
+	})
+
+	ws.emitter.on('ready', () => {
+		loadInvalidMoves();
 	})
 
 	async function submitEdit() {
@@ -145,11 +161,22 @@ export const useGameStateStore = defineStore("gameState", () => {
 
 		currentState.value.predictedMoves = response.moves;
 
+		loadInvalidMoves();
 
 		return response;
 	}
 
-	return { currentState, stateHistory, submitMove, isEditMode, depth, submitEdit, editState, editSettings, moveHistory };
+	function setMode(mode: 'play' | 'edit') {
+		if (mode == "edit") {
+			isEditMode.value = true;
+			submitEdit();
+		} else {
+			isEditMode.value = false;
+			loadInvalidMoves();
+		}
+	}
+
+	return { currentState, stateHistory, setMode, invalidMoves, submitMove, isEditMode, depth, submitEdit, editState, editSettings, moveHistory };
 });
 
 export function getHumanPosition(pos: number) {

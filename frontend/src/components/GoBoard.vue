@@ -104,6 +104,10 @@ function resolveScore(v: number): string {
 }
 
 function getColor(pos: number) {
+	if (gameState.invalidMoves?.find(x => x == pos)) {
+		return "bg-yellow-500";
+	}
+
 	if (props.boardPositions[pos] === 0) {
 		if (gameState.moveHistory[gameState.moveHistory.length - 1]?.[0] === pos) {
 			return "bg-blue-500"
@@ -113,10 +117,10 @@ function getColor(pos: number) {
 	}
 	if (props.boardPositions[pos] === 1) {
 		if (
-			(gameState.moveHistory[gameState.moveHistory.length - 1][1] !== undefined && 
+			(gameState.moveHistory[gameState.moveHistory.length - 1]?.[1] !== undefined && 
 				gameState.moveHistory[gameState.moveHistory.length - 1][1] === pos 
 			) || 
-			(gameState.moveHistory[gameState.moveHistory.length - 1][1] === undefined && 
+			(gameState.moveHistory[gameState.moveHistory.length - 1]?.[1] === undefined && 
 				gameState.moveHistory[gameState.moveHistory.length - 2]?.[1] === pos 
 			)
 		) {
