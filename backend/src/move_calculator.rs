@@ -1,8 +1,8 @@
-use std::collections::HashSet;
 
-use serde::{Deserialize, Serialize};
 
-use crate::{board::Board, heuristic::Heuristic, piece::{Piece, PieceWrap}, position::Position};
+
+
+use crate::{heuristic::Heuristic, piece::{Piece, PieceWrap}, position::Position};
 
 const DIRECTIONS: [[[i32; 2]; 2]; 4] = [
 	[[-1, 0], [1, 0]], //x
@@ -16,7 +16,7 @@ impl Heuristic<'_> {
 		let mut positions = Vec::new();
 
 		for pos in self.board {
-			if (self.board[&pos].is_empty() && self.validate_move(pos, player) == false) {
+			if self.board[&pos].is_empty() && self.validate_move(pos, player) == false {
 				positions.push(pos);
 			}
 		}

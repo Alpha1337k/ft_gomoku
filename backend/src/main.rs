@@ -116,7 +116,7 @@ fn get_moves(res: &Move) -> Vec<MoveFlat> {
 fn handle_pos_moves(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) {
 	let request: PosMoveRequest = serde_json::from_value(data).unwrap();
 
-	let mut board = Board::from_map(&request.board);
+	let board = Board::from_map(&request.board);
 
 	let mut heuristic = Heuristic::from_board(&board);
 

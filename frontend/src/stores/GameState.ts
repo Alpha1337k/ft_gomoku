@@ -16,25 +16,25 @@ export interface GameState {
 }
 
 export interface EvalState {
-	boardScore: number
-	moves: [{x: number, y: number}, number[]][]
+	boardScore: number;
+	moves: [{ x: number; y: number }, number[]][];
 }
 
 export interface BoardUpdateResponse {
 	board: {
-		data: number[]
-	},
-	captures: number[]
+		data: number[];
+	};
+	captures: number[];
 }
 
 export interface CalculationResponse {
 	moves: {
 		position: {
-			x: number,
-			y: number
-		},
-		order_idx: number,
-		score: number
+			x: number;
+			y: number;
+		};
+		order_idx: number;
+		score: number;
 	}[];
 	score: number;
 }
@@ -42,7 +42,7 @@ export interface CalculationResponse {
 export const useGameStateStore = defineStore("gameState", () => {
 	const stateHistory = ref<GameState[]>([]);
 
-	const moveHistory = ref<{0: number, 1: number, responseTime: number}[]>([]);
+	const moveHistory = ref<{ 0: number; 1: number; responseTime: number }[]>([]);
 
 	const currentState = ref<GameState>({
 		score: 0,
@@ -50,50 +50,50 @@ export const useGameStateStore = defineStore("gameState", () => {
 		board: {},
 		moves: [],
 		predictedMoves: [],
-		captures: [0, 0]
+		captures: [0, 0],
 	});
 
-	const invalidMoves = ref<number[]>()
+	const invalidMoves = ref<number[]>();
 
 	async function loadInvalidMoves() {
 		invalidMoves.value = undefined;
-		let moves: {x: number, y: number}[] = await ws.sendMessage("inv_moves", {
+		const moves: { x: number; y: number }[] = await ws.sendMessage("inv_moves", {
 			board: currentState.value.board,
 			player: 0,
-		})
+		});
 
-		invalidMoves.value = moves.map(x => x.x + x.y * 19);
+		invalidMoves.value = moves.map((x) => x.x + x.y * 19);
 	}
 
 	const depth = ref(4);
-	
+
 	const isEditMode = ref(false);
 	const editSettings = ref({
-		is_maximizing: true
-	})
+		is_maximizing: true,
+	});
 
 	const editState = ref<Partial<EvalState>>();
 
-	ws.emitter.on('boardUpdate', (b: BoardUpdateResponse) => {
-		let newBoard = {} as Board;
+	ws.emitter.on("boardUpdate", (b: BoardUpdateResponse) => {
+		const newBoard = {} as Board;
 
 		console.log(b);
 
 		for (let i = 0; i < b.board.data.length; i++) {
 			if (b.board.data[i] == -1) continue;
 
-			newBoard[i] = b.board.data[i]
+			newBoard[i] = b.board.data[i];
 		}
 
 		console.log(newBoard);
 
 		currentState.value.board = newBoard;
 		currentState.value.captures = b.captures;
-	})
+	});
 
-	ws.emitter.on('ready', () => {
+	ws.emitter.on("ready", () => {
 		loadInvalidMoves();
-	})
+	});
 
 	async function submitEdit() {
 		const response = await ws.sendMessage<EvalState>("evaluate", {
@@ -118,30 +118,30 @@ export const useGameStateStore = defineStore("gameState", () => {
 		const newMove = {
 			0: move,
 			1: undefined,
-			responseTime: undefined
-		} as any
+			responseTime: undefined,
+		} as any;
 
 		moveHistory.value.push(newMove);
 
 		const move_push = [move];
 
-		let timerStart = performance.now();
+		const timerStart = performance.now();
 		response = await ws.sendMessage<CalculationResponse>("calculate", {
 			depth: depth.value,
 			board: currentState.value.board,
 			turn_idx: currentState.value.currentTurn,
 			in_move: {
 				x: move % 19,
-				y: Math.floor(move / 19)
+				y: Math.floor(move / 19),
 			},
 			player: 0,
-			captures: currentState.value.captures
+			captures: currentState.value.captures,
 		});
-		let timerEnd = performance.now();
+		const timerEnd = performance.now();
 
 		console.log(response);
 		const aiMove = response.moves.shift()!;
-	
+
 		if (aiMove) {
 			move_push.push(aiMove.position.x + aiMove.position.y * 19);
 			currentState.value.currentTurn = 0;
@@ -149,7 +149,7 @@ export const useGameStateStore = defineStore("gameState", () => {
 
 		currentState.value.moves.push(move_push);
 		newMove[1] = move_push[1];
-		newMove.responseTime = timerEnd - timerStart 
+		newMove.responseTime = timerEnd - timerStart;
 
 		if (response.score == 1234) {
 			currentState.value.score = Infinity;
@@ -166,7 +166,7 @@ export const useGameStateStore = defineStore("gameState", () => {
 		return response;
 	}
 
-	function setMode(mode: 'play' | 'edit') {
+	function setMode(mode: "play" | "edit") {
 		if (mode == "edit") {
 			isEditMode.value = true;
 			submitEdit();
@@ -176,7 +176,19 @@ export const useGameStateStore = defineStore("gameState", () => {
 		}
 	}
 
-	return { currentState, stateHistory, setMode, invalidMoves, submitMove, isEditMode, depth, submitEdit, editState, editSettings, moveHistory };
+	return {
+		currentState,
+		stateHistory,
+		setMode,
+		invalidMoves,
+		submitMove,
+		isEditMode,
+		depth,
+		submitEdit,
+		editState,
+		editSettings,
+		moveHistory,
+	};
 });
 
 export function getHumanPosition(pos: number) {

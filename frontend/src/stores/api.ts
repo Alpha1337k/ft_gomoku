@@ -32,7 +32,7 @@ export class WebSocketAPI {
 		this.ws.onopen = (ev) => {
 			console.warn("WS Open: ", ev);
 			this.isOk = true;
-			this.emitter.emit('ready');
+			this.emitter.emit("ready");
 			cb(true);
 		};
 
@@ -53,9 +53,8 @@ export class WebSocketAPI {
 
 	async sendMessage<T = unknown>(subject: string, message: unknown): Promise<T> {
 		if (this.isOk == false) {
-			let reconnectResult: boolean = await new Promise((res) => this.initWebsocket(res));
-			if (reconnectResult == false)
-				throw new Error("WS is not ready");
+			const reconnectResult: boolean = await new Promise((res) => this.initWebsocket(res));
+			if (reconnectResult == false) throw new Error("WS is not ready");
 		}
 
 		const requestId = uuid();
@@ -63,7 +62,7 @@ export class WebSocketAPI {
 		console.log("OUT", {
 			subject,
 			requestId,
-			data: message
+			data: message,
 		});
 
 		this.ws.send(

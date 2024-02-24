@@ -20,9 +20,7 @@
 		</div>
 		<div class="flex bg-slate-950 px-2 space-x-2 text-slate-400 text-sm">
 			<div :key="i" v-for="(move, i) in gameState.currentState.predictedMoves" class="flex">
-				<p
-					:class="getIdxColor(move.order_idx)"
-				>
+				<p :class="getIdxColor(move.order_idx)">
 					{{ getHumanPosition(move.position.x + move.position.y * 19) }}
 				</p>
 				<div class="text-slate-800 mx-2" v-if="i % 2 == 1">|</div>
@@ -43,34 +41,45 @@
 						{{ getHumanPosition(moves[1]) }}
 					</p>
 				</div>
-				<p class="text-xs text-slate-600">
-					{{ moves.responseTime?.toFixed(0) || '?' }} ms
-				</p>
+				<p class="text-xs text-slate-600">{{ moves.responseTime?.toFixed(0) || "?" }} ms</p>
 			</div>
 		</div>
 		<div class="h-64 bg-slate-900 rounded-b-lg flex flex-col">
 			<div class="flex divide-x divide-slate-500">
-				<button @click="gameState.setMode('play')" :class="{'bg-slate-700': !gameState.isEditMode}" class="hover:bg-slate-700 w-full  cursor-pointer p-2">
+				<button
+					@click="gameState.setMode('play')"
+					:class="{ 'bg-slate-700': !gameState.isEditMode }"
+					class="hover:bg-slate-700 w-full cursor-pointer p-2"
+				>
 					Play
 				</button>
-				<button @click="gameState.setMode('edit')" :class="{'bg-slate-700': gameState.isEditMode}" class="hover:bg-slate-700 w-full  cursor-pointer p-2">
+				<button
+					@click="gameState.setMode('edit')"
+					:class="{ 'bg-slate-700': gameState.isEditMode }"
+					class="hover:bg-slate-700 w-full cursor-pointer p-2"
+				>
 					Edit
 				</button>
 			</div>
 			<div class="p-2 flex-1">
-				<Slider :max="6" :min="1" v-model="gameState.depth">
-					Depth ({{ gameState.depth }})
-				</Slider>
+				<Slider :max="6" :min="1" v-model="gameState.depth"> Depth ({{ gameState.depth }}) </Slider>
 				<div>
 					<p>Board d0 evaluation: {{ gameState.editState?.boardScore?.toFixed(4) ?? "?" }}</p>
 				</div>
 				<div class="flex justify-between">
 					<p>View prio for blue?</p>
-					<input type="checkbox" v-model="gameState.editSettings.is_maximizing" @change="gameState.submitEdit()"/>
+					<input type="checkbox" v-model="gameState.editSettings.is_maximizing" @change="gameState.submitEdit()" />
 				</div>
 			</div>
-			<button @click="gameState.currentState.board = {}; gameState.submitEdit()" :class="{'bg-slate-700': !gameState.isEditMode}" class="hover:bg-slate-700 w-full bg-slate-700  cursor-pointer p-2">
-					Reset
+			<button
+				@click="
+					gameState.currentState.board = {};
+					gameState.submitEdit();
+				"
+				:class="{ 'bg-slate-700': !gameState.isEditMode }"
+				class="hover:bg-slate-700 w-full bg-slate-700 cursor-pointer p-2"
+			>
+				Reset
 			</button>
 		</div>
 	</div>
@@ -86,14 +95,13 @@ console.log(gameState.currentState.score);
 
 function getIdxColor(idx: number) {
 	if (idx < 5) {
-		return 'text-white'
+		return "text-white";
 	} else if (idx < 10) {
-		return 'text-green-500'
+		return "text-green-500";
 	} else if (idx < 20) {
-		return 'text-amber-500'
+		return "text-amber-500";
 	} else {
-		return 'text-red-500'
+		return "text-red-500";
 	}
 }
-
 </script>
