@@ -30,7 +30,7 @@ const B0_SCORES: [f32; 6] = [
 const B1_SCORES: [f32; 6] = [
 	1.0,
 	2.0,
-	3.0,
+	-4.0,
 	4.0,
 	16.0,
 	INFINITY
@@ -56,7 +56,20 @@ pub struct EvaluationScore {
 	pub capture_count: usize
 }
 
-#[derive(Clone)]
+fn is_point_on_line(start: Position, end: Position, check: Position) -> bool {
+	let dxc = check.x as i32 - start.x as i32;
+	let dyc = check.y as i32 - start.y as i32;
+
+	let dxl = end.x as i32 - start.x as i32;
+	let dyl = end.y as i32 - start.y as i32;
+
+	let cross = dxc * dyl - dyc * dxl;
+
+	cross != 0
+}
+
+
+#[derive(Clone, Debug)]
 pub struct Line {
 	pub id: usize,
 	pub start: Position,
@@ -65,7 +78,8 @@ pub struct Line {
 	pub direction: u8,
 	pub score: f32,
 	pub block_pos: u8,
-	pub player: Piece
+	pub player: Piece,
+	pub disabled: bool,
 }
 
 impl Line {
@@ -78,7 +92,8 @@ impl Line {
 			block_pos: blocks,
 			direction: direction,
 			length: length,
-			score: Self::calculate(blocks, length, player)
+			score: Self::calculate(blocks, length, player),
+			disabled: false
 		}
 	}
 
@@ -117,6 +132,70 @@ impl Heuristic<'_> {
 		}
 	}
 
+	pub fn from_new_state<'a>(&'a self, state: &'a GameState) -> Heuristic {
+
+		let mut n = Heuristic {
+			lines_idx: self.lines_idx,
+			board: &state.board,
+			captures: &state.captures,
+			lines: self.lines.clone(),
+			line_pos: self.line_pos.clone(),
+			score: None,
+		};
+	
+		let diff = Board::get_diff(n.board, &self.board);
+
+		// println!("DLEN: {}", diff.len());
+
+		for pos in diff {
+			for (i, direction) in DIRECTIONS.iter().enumerate() {
+				let mut cur_poses = [
+					pos.clone(),
+					pos.clone(),
+				];
+
+				let mut needs_line_one_eval = true;
+				let mut needs_line_two_eval = true;
+
+				if cur_poses[0].relocate(direction[0][0], direction[0][1]).is_ok() {
+					if let Some(l) = n.get_line_mut(&cur_poses[0], i) {
+						l.disabled = true;
+					}
+				} else {
+					needs_line_one_eval = false;
+				}
+				
+				if cur_poses[1].relocate(direction[1][0], direction[1][1]).is_ok() {
+					if let Some(l) = n.get_line_mut(&cur_poses[1], i) {
+						l.disabled = true;
+					}
+				} else {
+					needs_line_two_eval = false;
+				}
+
+				if needs_line_one_eval {
+					let recalc = n.evaluate_position(cur_poses[0], direction, i);
+	
+					if needs_line_two_eval == false || is_point_on_line(recalc.0, recalc.1, cur_poses[1]) {
+						continue;
+					}
+				}
+				if needs_line_two_eval {
+					n.evaluate_position(cur_poses[1], direction, i);
+				}
+			}
+		}
+
+		n.lines.retain(|_key, val| val.disabled == false);
+
+		// for line in &n.lines {
+		// 	println!("{:?}", line);
+		// }
+
+		return n;
+	}
+
+
 	pub fn from_board(board: &Board) -> Heuristic {
 		Heuristic {
 			lines_idx: 1,
@@ -136,7 +215,6 @@ impl Heuristic<'_> {
 	}
 
 	fn get_line(&self, pos: &Position, direction_idx: usize) -> Option<&Line> {
-
 		let lines = self.line_pos.get(pos);
 		if lines.is_none() {
 			return None;
@@ -147,28 +225,23 @@ impl Heuristic<'_> {
 		return line;
 	}
 
+	fn get_line_mut(&mut self, pos: &Position, direction_idx: usize) -> Option<&mut Line> {
+
+		let lines = self.line_pos.get(pos);
+		if lines.is_none() {
+			return None;
+		} 
+		
+		let line = self.lines.get_mut(&lines?[direction_idx]);
+
+		return line;
+	}
+
 	fn get_position_score(pos: Position) -> f32 {
 		let y = 1f32 - ((9.5f32 - (pos.y as f32)).abs() / 9.5f32);
 		let x = 1f32 - ((9.5f32 - (pos.x % 19) as f32).abs() / 9.5f32);
 
 		return (y + x) / 2f32;
-	}
-
-	fn get_position_scores(&self) -> f32 {
-		let mut score = 0.0;
-		
-		for y in 0..19 {
-			for x in 0..19 {
-				let pos = Position::new(x, y);
-				if self.board[&pos].is_max() {
-					score += Self::get_position_score(pos);
-				} else if self.board[&pos].is_min() {
-					score -= Self::get_position_score(pos);
-				}
-			}
-		}
-
-		return score;
 	}
 
 	fn get_line_length(&self, direction: [i32; 2], start: Position, player: Piece) -> LineResult
@@ -226,58 +299,52 @@ impl Heuristic<'_> {
 		}
 	}
 
-	fn evaluate_position(&mut self, pos: Position) {
-		let directions = [
-			[[-1, 0], [1, 0]], //x
-			[[0, -1], [0, 1]], //y
-			[[-1, -1], [1, 1]], //tlbr
-			[[-1, 1], [1, -1]], //trbl
+	fn evaluate_position(&mut self, pos: Position, direction: &[[i32; 2]; 2], direction_idx: usize) -> (Position, Position) {
+		let scores = [
+			self.get_line_length(direction[0], pos, self.board[&pos]),
+			self.get_line_length(direction[1], pos, self.board[&pos])
 		];
 
-		for (i, direction) in directions.iter().enumerate() {
-			if self.get_line(&pos, i).is_some() {
-				// println!("get_line cached already");
-				continue;
-			}
+		let block_count: u8 = ((scores[0].blocked as u8) << 1) + scores[1].blocked as u8;
+		let length = 1 + scores[0].length + scores[1].length;
 
-			let scores = [
-				self.get_line_length(direction[0], pos, self.board[&pos]),
-				self.get_line_length(direction[1], pos, self.board[&pos])
-			];
+		// println!("SCORES: {} {} {} {} {}", pos, scores[0].length, scores[1].length, length, block_count);
 
-			let block_count: u8 = ((scores[0].blocked as u8) << 1) + scores[1].blocked as u8;
-			let length = 1 + scores[0].length + scores[1].length;
-
-			// println!("SCORES: {} {} {} {} {}", pos, scores[0].length, scores[1].length, length, block_count);
-
-			if length == 1 {
-				// println!("continuing..");
-				continue;
-			}
-
-
-			self.lines_idx += 1;
-
-			self.lines.insert(self.lines_idx, 
-				Line::new(self.lines_idx, self.board[&pos], block_count, scores[0].end, scores[1].end, i as u8, length)
-			);
-	
-			let created_line = self.lines.get(&self.lines_idx).unwrap();
-
-			self.populate_line_pos(
-				&scores[0].end, 
-				&scores[1].end, 
-				direction[1], 
-				i, 
-				created_line.id
-			);
+		if length == 1 {
+			// println!("continuing..");
+			return (scores[0].end, scores[1].end);
 		}
+
+
+		self.lines_idx += 1;
+
+		self.lines.insert(self.lines_idx, 
+			Line::new(self.lines_idx, self.board[&pos], block_count, scores[0].end, scores[1].end, direction_idx as u8, length)
+		);
+
+		let created_line = self.lines.get(&self.lines_idx).unwrap();
+
+		self.populate_line_pos(
+			&scores[0].end, 
+			&scores[1].end, 
+			direction[1], 
+			direction_idx, 
+			created_line.id
+		);
+
+		return (scores[0].end, scores[1].end);
 	}
 
 	fn evaluate_positions(&mut self) {
 		for pos in self.board.into_iter() {
 			if self.board[&pos].is_piece() {
-				self.evaluate_position(pos);
+				for (i, direction) in DIRECTIONS.iter().enumerate() {
+					if self.get_line(&pos, i).is_some() {
+						// println!("get_line cached already");
+						continue;
+					}
+					self.evaluate_position(pos, direction, i);
+				}
 			}
 		}
 	}
@@ -343,11 +410,6 @@ impl Heuristic<'_> {
 				 if _nb_1.relocate(direction[1][0], direction[1][1]).is_ok() {self.get_line(&_nb_1, i)} else {None},
 			];
 
-			// println!("NB: {} {}", _nb_0, _nb_1);
-			// println!("NL: {} {}", if neighbor_lines[0].is_some() {neighbor_lines[0].unwrap().length} else {1234},
-			// 	if neighbor_lines[1].is_some() {neighbor_lines[1].unwrap().length} else {1234}
-			// );
-
 			let capture_map = [
 				neighbor_lines[0].is_some_and(|x| x.player.is_opposite(&player) && neighbor_lines[0].unwrap().length == 2 && x.block_pos & 0x2 != 0),
 				neighbor_lines[1].is_some_and(|x| x.player.is_opposite(&player) && neighbor_lines[1].unwrap().length == 2 && x.block_pos & 0x1 != 0)
@@ -405,7 +467,7 @@ impl Heuristic<'_> {
 
 	pub fn get_moves(&self, player: Piece) -> Vec<(Position, EvaluationScore)> {
 		let mut moves = HashMap::<Position, EvaluationScore>::with_capacity(50);
-		
+
 		for pos in self.board.into_iter() {
 			if self.board[&pos].is_empty() {
 				continue;
@@ -421,15 +483,6 @@ impl Heuristic<'_> {
 					{
 						continue;
 					}
-
-					
-					// check_pos = Position::new(5, 7);
-					// println!("--- MOVE {} ---", check_pos);
-					// if (self.validate_virtual_move(check_pos, player) == false) {
-					// 	println!("INVALIDATED");
-					// 	// return vec![];
-					// 	continue;
-					// }
 
 					let mut eval = self.evaluate_virtual_move(check_pos, player).unwrap();
 

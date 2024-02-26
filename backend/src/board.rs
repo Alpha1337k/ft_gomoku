@@ -1,6 +1,8 @@
 
 
 
+use std::{fmt};
+
 use serde::Serialize;
 use serde_json::Value;
 use crate::{piece::{Piece, PieceWrap}, position::Position};
@@ -28,6 +30,18 @@ impl Board {
 		}
 
 		return board;
+	}
+
+	pub fn get_diff(b1: &Board, b2: &Board) -> Vec<Position> {
+		let mut diffs = Vec::with_capacity(4);
+		
+		for pos in b1 {
+			if b1[&pos] != b2[&pos] {
+				diffs.push(pos);
+			}
+		}
+
+		return diffs;
 	}
 
 	pub fn get_captures(board: &Board, pos: Position, player: Piece) -> u8 {
@@ -69,6 +83,7 @@ impl Board {
 		}
 
 		let mut captures = capture_map.unwrap_or_else(|| Self::get_captures(&self, pos, player));
+		let captures_store = captures;
 
 		let mut capture_count = 0;
 
@@ -88,7 +103,6 @@ impl Board {
 			let needs_capture = captures & 0x1;
 			if needs_capture == 1 {
 				let map = maps[map_idx];
-
 				// println!("TAKING FOR IDX {} MOVE {}", map_idx, pos);
 
 				if pos.clone().relocate(map[0][0], map[0][1]).is_ok_and(|x| self[x] == player.get_opposite()) && 
@@ -96,6 +110,9 @@ impl Board {
 					self[&pos.clone().relocate(map[0][0], map[0][1]).unwrap()] = Piece::Empty;
 					self[&pos.clone().relocate(map[1][0], map[1][1]).unwrap()] = Piece::Empty;
 				} else {
+					println!("\nFAILED CAPTURE AT POS: {} ({})", pos, captures_store);
+					dbg!(player, map[0], map[1]);
+					println!("{}", self);
 					panic!();
 				}
 
@@ -159,5 +176,21 @@ impl<'a> Iterator for BoardIterator {
 		}
 
 		return Some(Position::from_u64(self.index));
+	}
+}
+
+impl fmt::Display for Board {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "  ")?;
+		for i in 0..19 {
+			write!(f, "{:3}", i)?;
+		}
+		for i in 0..19*19 {
+			if i % 19 == 0 {
+				write!(f, "\n{}:", ((i as f64 / 19.0).floor() as u8 + 65) as char )?;
+			}
+			write!(f, " {} ", self.data[i])?;
+		}
+		Ok(())
 	}
 }

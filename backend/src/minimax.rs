@@ -52,7 +52,7 @@ impl GomokuSolver {
 		return solver;
 	}
 
-	fn minimax(&mut self, depth: usize, state: &GameState, mut alpha: f32, mut beta: f32) -> Move
+	fn minimax(&mut self, depth: usize, old_heuristic: &Heuristic, state: &GameState, mut alpha: f32, mut beta: f32) -> Move
 	{
 		let mut move_store = Move {
 			child: None,
@@ -62,8 +62,7 @@ impl GomokuSolver {
 			position: Position::new(0, 0)
 		};
 
-		let mut heuristic = Heuristic::from_game_state(&state);
-
+		let mut heuristic = old_heuristic.from_new_state(&state);
 
 		self.depth_entries[depth] += 1;
 		let heuristical_score = heuristic.get_heuristic();
@@ -87,11 +86,11 @@ impl GomokuSolver {
 				continue;
 			}
 
-			// println!("MC: {}", pos_move.0);
+			// println!("\nMC: {} {}", pos_move.0, pos_move.1.capture_map);
 
 			let capture_count = new_board.set_move(pos_move.0, state.player, Some(pos_move.1.capture_map));
 
-			let node_result = self.minimax(depth - 1, &GameState {
+			let node_result = self.minimax(depth - 1, &heuristic, &GameState {
 				board: new_board,
 				captures: [
 					if state.player == Piece::Max {self.captures[0] + capture_count} else {self.captures[0]}, 
@@ -140,13 +139,19 @@ impl GomokuSolver {
 
 	pub fn solve<'a>(&mut self) -> Result<Move, Error>
 	{
-		println!("Starting minimax..");
+		println!("Starting minimax..\n");
 
-		let res = self.minimax(self.depth, &GameState {
+		let game_state = GameState {
 			board: self.board.clone(),
 			captures: self.captures,
 			player: Piece::Min,
-		}, -INFINITY, INFINITY);
+		};
+
+		let mut heuristic = Heuristic::from_game_state(&game_state);
+
+		let _ = heuristic.get_heuristic();
+
+		let res = self.minimax(self.depth, &heuristic, &game_state, -INFINITY, INFINITY);
 
 		let mut iter = &res;
 

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
 pub struct Position {
 	pub x: usize,
 	pub y: usize,

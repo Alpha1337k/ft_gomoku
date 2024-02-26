@@ -2,7 +2,7 @@ use std::fmt;
 
 use serde_repr::*;
 
-#[derive(Clone, Copy, PartialEq, Deserialize_repr, Serialize_repr)]
+#[derive(Clone, Copy, PartialEq, Deserialize_repr, Serialize_repr, Debug)]
 #[repr(i8)]
 pub enum Piece {
 	Empty = -1,
@@ -36,7 +36,7 @@ impl TryFrom<u64> for Piece {
 impl fmt::Display for Piece {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let to_write = match self {
-			Piece::Empty => 'E',
+			Piece::Empty => ' ',
 			Piece::Max => 'X',
 			Piece::Min => 'I',
 		};

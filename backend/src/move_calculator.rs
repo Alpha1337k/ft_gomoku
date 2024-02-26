@@ -29,12 +29,13 @@ impl Heuristic<'_> {
 			return -1
 		}
 		if self.line_pos.get(&pos).is_some_and(|lines| {
-			if lines[direction_idx] == 0 {
+			let line = &self.lines.get(&lines[direction_idx]);
+			
+			if line.is_none() {
 				return false;
 			}
-			let line = &self.lines[&lines[direction_idx]];
 
-			line.block_pos == 0 && line.player == player && line.length == 2
+			line.unwrap().block_pos == 0 && line.unwrap().player == player && line.unwrap().length == 2
 		}) {
 			return 1;
 		}
@@ -48,12 +49,13 @@ impl Heuristic<'_> {
 		}
 
 		if self.line_pos.get(&pos).is_some_and(|lines| {
-			if lines[direction_idx] == 0 {
+			let line = &self.lines.get(&lines[direction_idx]);
+			
+			if line.is_none() {
 				return false;
 			}
-			let line = &self.lines[&lines[direction_idx]];
 
-			line.block_pos == 0 && line.player == player && line.length == 2
+			line.unwrap().block_pos == 0 && line.unwrap().player == player && line.unwrap().length == 2
 		}) {
 			return 1;
 		}
