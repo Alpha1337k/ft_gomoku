@@ -56,7 +56,7 @@ impl GomokuSolver {
 	{
 		let mut move_store = Move {
 			child: None,
-			cutoff_at: 0,
+			cutoff_at: 1234,
 			score: if state.player == Piece::Max {-INFINITY} else {INFINITY},
 			order_idx: 0,
 			position: Position::new(0, 0)

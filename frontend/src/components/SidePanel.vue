@@ -13,13 +13,16 @@
 					+{{ gameState.currentState.score.toPrecision(3).substring(0, 4) }}
 				</h2>
 			</div>
+			<div class="flex-1 mx-2 text-sm" v-if="gameState.currentState.predictedMoves[0]">
+				<p :class="getIdxColor(gameState.currentState.predictedMoves[0].order_idx)">{{gameState.currentState.predictedMoves[0].order_idx}}</p>
+			</div>
 			<div v-if="gameState.currentState.moves.length > 0" class="divide-x divide-slate-300 flex">
 				<p class="px-2 text-blue-300">{{ gameState.currentState.captures[0] }}</p>
 				<p class="px-2 text-red-400">{{ gameState.currentState.captures[1] }}</p>
 			</div>
 		</div>
 		<div class="flex bg-slate-950 px-2 space-x-2 text-slate-400 text-sm">
-			<div :key="i" v-for="(move, i) in gameState.currentState.predictedMoves" class="flex">
+			<div :key="i" v-for="(move, i) in gameState.currentState.predictedMoves.slice(1)" class="flex">
 				<p :class="getIdxColor(move.order_idx)">
 					{{ getHumanPosition(move.position.x + move.position.y * 19) }}
 				</p>

@@ -437,13 +437,16 @@ impl Heuristic<'_> {
 			}
 
 			if neighbor_lines[0].is_some() && neighbor_lines[0].unwrap().player != player {
-				let new_n_score = Line::calculate(neighbor_lines[0].unwrap().block_pos & 0x2 | 0x1, neighbor_lines[0].unwrap().length, player);
+				let blocks = (neighbor_lines[0].unwrap().block_pos & 0x2) | 0x1;
+
+				let new_n_score = Line::calculate(blocks, neighbor_lines[0].unwrap().length, player.get_opposite());
 				new_calc -= neighbor_lines[0].unwrap().score;
 				new_calc += new_n_score;
 			}
 
 			if neighbor_lines[1].is_some() && neighbor_lines[1].unwrap().player != player {
-				let new_n_score = Line::calculate(neighbor_lines[1].unwrap().block_pos & 0x1 | 0x2, neighbor_lines[1].unwrap().length, player);
+				let blocks = (neighbor_lines[1].unwrap().block_pos & 0x1) | 0x2;
+				let new_n_score = Line::calculate(blocks, neighbor_lines[1].unwrap().length, player.get_opposite());
 				new_calc -= neighbor_lines[1].unwrap().score;
 				new_calc += new_n_score;
 			}

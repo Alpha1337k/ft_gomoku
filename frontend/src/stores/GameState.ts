@@ -140,7 +140,11 @@ export const useGameStateStore = defineStore("gameState", () => {
 		const timerEnd = performance.now();
 
 		console.log(response);
-		const aiMove = response.moves.shift()!;
+		response.moves.pop();
+		const aiMove = response.moves[0]!;
+
+		console.log("ORDER_IDX_FIRST", aiMove.order_idx);
+		
 
 		if (aiMove) {
 			move_push.push(aiMove.position.x + aiMove.position.y * 19);
