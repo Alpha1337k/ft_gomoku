@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::HashMap, f32::INFINITY};
+use std::{cmp::Ordering, collections::{HashMap, HashSet}, f32::INFINITY};
 
 use crate::{board::Board, minimax::GameState, piece::{Piece, PieceWrap}, position::Position};
 
@@ -56,16 +56,14 @@ pub struct EvaluationScore {
 	pub capture_count: usize
 }
 
+fn get_distance(p1: &Position, p2: &Position) -> i32
+{
+	((p1.x as f32 - p2.x as f32).powi(2) + (p1.y as f32 - p2.y as f32).powi(2)).sqrt() as i32
+}
+
 fn is_point_on_line(start: Position, end: Position, check: Position) -> bool {
-	let dxc = check.x as i32 - start.x as i32;
-	let dyc = check.y as i32 - start.y as i32;
 
-	let dxl = end.x as i32 - start.x as i32;
-	let dyl = end.y as i32 - start.y as i32;
-
-	let cross = dxc * dyl - dyc * dxl;
-
-	cross != 0
+	get_distance(&start, &end) == get_distance(&end, &check) + get_distance(&start, &check)
 }
 
 
@@ -145,6 +143,8 @@ impl Heuristic<'_> {
 	
 		let diff = Board::get_diff(n.board, &self.board);
 
+		let mut lines_to_delete = HashSet::<usize>::with_capacity(4);
+		
 		// println!("DLEN: {}", diff.len());
 
 		for pos in diff {
@@ -173,20 +173,28 @@ impl Heuristic<'_> {
 					needs_line_two_eval = false;
 				}
 
-				if needs_line_one_eval {
+				if needs_line_one_eval && n.board[&cur_poses[0]].is_piece() {
 					let recalc = n.evaluate_position(cur_poses[0], direction, i);
+
+					if (recalc.2.is_some()) {
+						lines_to_delete.extend(recalc.2.unwrap());
+					}
 	
 					if needs_line_two_eval == false || is_point_on_line(recalc.0, recalc.1, cur_poses[1]) {
 						continue;
 					}
 				}
-				if needs_line_two_eval {
-					n.evaluate_position(cur_poses[1], direction, i);
+				if needs_line_two_eval && n.board[&cur_poses[1]].is_piece() {
+					let recalc = n.evaluate_position(cur_poses[1], direction, i);
+				
+					if (recalc.2.is_some()) {
+						lines_to_delete.extend(recalc.2.unwrap());
+					}
 				}
 			}
 		}
 
-		n.lines.retain(|_key, val| val.disabled == false);
+		n.lines.retain(|_key, val| val.disabled == false && lines_to_delete.contains(&val.id) == false);
 
 		// for line in &n.lines {
 		// 	println!("{:?}", line);
@@ -272,9 +280,10 @@ impl Heuristic<'_> {
 		}
 	}
 
-	fn populate_line_pos(&mut self, start: &Position, end: &Position, direction: [i32; 2], direction_idx: usize, reference_idx: usize)
+	fn populate_line_pos(&mut self, start: &Position, end: &Position, direction: [i32; 2], direction_idx: usize, reference_idx: usize) -> HashSet<usize>
 	{
 		let mut pos = start.clone();
+		let mut overwritten_lines = HashSet::with_capacity(2);
 
 		loop {
 			// println!("POS: {} {}", pos, end);
@@ -290,16 +299,22 @@ impl Heuristic<'_> {
 			}
 
 			// println!("B4: {} {} {}", pos, p[direction_idx], reference_idx);
+
+			if (p[direction_idx] != 0) {
+				overwritten_lines.insert(p[direction_idx]);
+			}
 			
 			p[direction_idx] = reference_idx;
 
 			if pos == *end || pos.relocate(direction[0], direction[1]).is_err() {
 				break;
 			}
+
 		}
+		return overwritten_lines;
 	}
 
-	fn evaluate_position(&mut self, pos: Position, direction: &[[i32; 2]; 2], direction_idx: usize) -> (Position, Position) {
+	fn evaluate_position(&mut self, pos: Position, direction: &[[i32; 2]; 2], direction_idx: usize) -> (Position, Position, Option<HashSet<usize>>) {
 		let scores = [
 			self.get_line_length(direction[0], pos, self.board[&pos]),
 			self.get_line_length(direction[1], pos, self.board[&pos])
@@ -312,7 +327,7 @@ impl Heuristic<'_> {
 
 		if length == 1 {
 			// println!("continuing..");
-			return (scores[0].end, scores[1].end);
+			return (scores[0].end, scores[1].end, None);
 		}
 
 
@@ -324,7 +339,7 @@ impl Heuristic<'_> {
 
 		let created_line = self.lines.get(&self.lines_idx).unwrap();
 
-		self.populate_line_pos(
+		let overwritten = self.populate_line_pos(
 			&scores[0].end, 
 			&scores[1].end, 
 			direction[1], 
@@ -332,7 +347,7 @@ impl Heuristic<'_> {
 			created_line.id
 		);
 
-		return (scores[0].end, scores[1].end);
+		return (scores[0].end, scores[1].end, Some(overwritten));
 	}
 
 	fn evaluate_positions(&mut self) {
@@ -410,6 +425,11 @@ impl Heuristic<'_> {
 				 if _nb_1.relocate(direction[1][0], direction[1][1]).is_ok() {self.get_line(&_nb_1, i)} else {None},
 			];
 
+			// let neighbor_blocks = [
+			// 	if neighbor_lines[0].is_none() {self.board[&_nb_0]} else {Piece::Empty},
+			// 	if neighbor_lines[1].is_none() {self.board[&_nb_1]} else {Piece::Empty},
+			// ];
+
 			let capture_map = [
 				neighbor_lines[0].is_some_and(|x| x.player.is_opposite(&player) && neighbor_lines[0].unwrap().length == 2 && x.block_pos & 0x2 != 0),
 				neighbor_lines[1].is_some_and(|x| x.player.is_opposite(&player) && neighbor_lines[1].unwrap().length == 2 && x.block_pos & 0x1 != 0)
@@ -419,6 +439,8 @@ impl Heuristic<'_> {
 				neighbor_lines[0].is_some_and(|x| x.player.is_opposite(&player)),
 				neighbor_lines[1].is_some_and(|x| x.player.is_opposite(&player))				
 			];
+
+			// println!("NB_L: {}, {} NB_B: {}, {} POS: {}", neighbor_lines[0].is_some(), neighbor_lines[1].is_some(), neighbor_blocks[0], neighbor_blocks[1], pos);
 
 			let mut new_calc = 0.0;
 			let mut blocks = 0;
@@ -435,18 +457,18 @@ impl Heuristic<'_> {
 				length += neighbor_lines[1].unwrap().length;
 				new_calc -= neighbor_lines[1].unwrap().score;
 			}
-
 			if neighbor_lines[0].is_some() && neighbor_lines[0].unwrap().player != player {
-				let blocks = (neighbor_lines[0].unwrap().block_pos & 0x2) | 0x1;
+				let neighbor_blocks = (neighbor_lines[0].unwrap().block_pos & 0x2) | 0x1;
 
-				let new_n_score = Line::calculate(blocks, neighbor_lines[0].unwrap().length, player.get_opposite());
+				let new_n_score = Line::calculate(neighbor_blocks, neighbor_lines[0].unwrap().length, player.get_opposite());
 				new_calc -= neighbor_lines[0].unwrap().score;
 				new_calc += new_n_score;
 			}
 
 			if neighbor_lines[1].is_some() && neighbor_lines[1].unwrap().player != player {
-				let blocks = (neighbor_lines[1].unwrap().block_pos & 0x1) | 0x2;
-				let new_n_score = Line::calculate(blocks, neighbor_lines[1].unwrap().length, player.get_opposite());
+				let neighbor_blocks = (neighbor_lines[1].unwrap().block_pos & 0x1) | 0x2;
+
+				let new_n_score = Line::calculate(neighbor_blocks, neighbor_lines[1].unwrap().length, player.get_opposite());
 				new_calc -= neighbor_lines[1].unwrap().score;
 				new_calc += new_n_score;
 			}
