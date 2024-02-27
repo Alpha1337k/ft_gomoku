@@ -16,16 +16,16 @@
 					v-for="i in 361"
 					:key="i"
 					:class="[i % 2 == 0 ? 'bg-black' : 'bg-slate-800']"
-					class="cursor-pointer flex items-center justify-center h-12"
+					class="cursor-pointer flex items-center justify-center h-auto"
 					@mouseover="hoverPos = i - 1"
 					@mouseleave="hoverPos = undefined"
 					@click="handleClick($event, i - 1)"
 					@contextmenu.prevent="handleRightClick(i - 1)"
 				>
 					<div v-if="evalPrioMap[i - 1] == undefined" :class="getColor(i - 1)" class="rounded-xl h-5/6 w-5/6"></div>
-					<div v-else-if="evalPrioMap[i - 1]" class="h-5/6 w-5/6">
-						<p class="text-white h-10 mx-auto text-center">{{ evalPrioMap[i - 1]?.idx }}</p>
-						<p class="h-10 mx-auto text-center absolute text-sm text-gray-400 -mt-5 ml-1">{{ resolveScore(evalPrioMap[i - 1]?.score) }}</p>
+					<div v-else-if="evalPrioMap[i - 1]" class="h-10 absolute flex flex-col items-center">
+						<p class="text-white mx-auto text-center">{{ evalPrioMap[i - 1]?.idx }}</p>
+						<p class="mx-auto text-center text-sm text-gray-400">{{ resolveScore(evalPrioMap[i - 1]?.score) }}</p>
 					</div>
 				</div>
 			</div>

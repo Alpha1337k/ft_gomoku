@@ -56,7 +56,12 @@ impl Position {
 
 impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let y_char = (self.y as u8) + 65;
-        write!(f, "{}{}", y_char as char, self.x)
+		if self.y >= 19 || self.x >= 19 {
+			write!(f, "Invalid Position")
+		} else {
+			let y_char = (self.y as u8) + 65;
+			write!(f, "{}{}", y_char as char, self.x)
+		}
+
     }
 }
