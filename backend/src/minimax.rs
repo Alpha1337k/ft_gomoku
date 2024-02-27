@@ -30,17 +30,18 @@ pub struct GomokuSolver
 fn print_moveset(base_pos: &Position, base_order_idx: usize, base_captures: u8, base_score: f32, m: &Move) {
 	let mut iter = m;
 
-	print!("Score: {}, moves: ( {} ({}) [{}] = {} )", m.score, base_pos, base_order_idx, base_captures, base_score);
+	print!("Start score: {}, moves: ( {} ({}) [{}] = {} )", base_score, base_pos, base_order_idx, iter.captures , iter.depth_score);
 
 	loop {
 		if (iter.child.is_none()) {
 			break;
 		}
 		print!(" -> ");
-		print!("( {} ({}) [{}] = {} )", iter.position, iter.order_idx, iter.captures, iter.depth_score);
+		print!("( {} ({}) [{}]", iter.position, iter.order_idx, iter.captures);
 		
 		if (iter.child.is_some()) {
 			iter = iter.child.as_ref().unwrap().as_ref();
+			print!(" = {})", iter.depth_score);
 		}
 	}
 	println!();
@@ -131,8 +132,8 @@ impl GomokuSolver {
 			let node_result = self.minimax(depth - 1, &heuristic, &GameState {
 				board: new_board,
 				captures: [
-					if state.player == Piece::Max {self.captures[0] + capture_count} else {self.captures[0]}, 
-					if state.player == Piece::Min {self.captures[1] + capture_count} else {self.captures[1]}
+					if state.player == Piece::Max {heuristic.captures[0] + capture_count} else {heuristic.captures[0]}, 
+					if state.player == Piece::Min {heuristic.captures[1] + capture_count} else {heuristic.captures[1]}
 				],
 				player: state.player.get_opposite(),
 			}, alpha, beta);

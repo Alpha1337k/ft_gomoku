@@ -30,7 +30,7 @@ const B0_SCORES: [f32; 6] = [
 const B1_SCORES: [f32; 6] = [
 	1.0,
 	2.0,
-	-4.0,
+	-2.0,
 	4.0,
 	16.0,
 	INFINITY
