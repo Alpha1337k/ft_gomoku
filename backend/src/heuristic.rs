@@ -176,7 +176,7 @@ impl Heuristic<'_> {
 				if needs_line_one_eval && n.board[&cur_poses[0]].is_piece() {
 					let recalc = n.evaluate_position(cur_poses[0], direction, i);
 
-					if (recalc.2.is_some()) {
+					if recalc.2.is_some() {
 						lines_to_delete.extend(recalc.2.unwrap());
 					}
 	
@@ -187,7 +187,7 @@ impl Heuristic<'_> {
 				if needs_line_two_eval && n.board[&cur_poses[1]].is_piece() {
 					let recalc = n.evaluate_position(cur_poses[1], direction, i);
 				
-					if (recalc.2.is_some()) {
+					if recalc.2.is_some() {
 						lines_to_delete.extend(recalc.2.unwrap());
 					}
 				}
@@ -300,7 +300,7 @@ impl Heuristic<'_> {
 
 			// println!("B4: {} {} {}", pos, p[direction_idx], reference_idx);
 
-			if (p[direction_idx] != 0) {
+			if p[direction_idx] != 0 {
 				overwritten_lines.insert(p[direction_idx]);
 			}
 			

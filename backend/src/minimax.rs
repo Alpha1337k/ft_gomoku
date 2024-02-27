@@ -27,19 +27,19 @@ pub struct GomokuSolver
 	pub depth_entries: Vec<usize>
 }
 
-fn print_moveset(base_pos: &Position, base_order_idx: usize, base_captures: u8, base_score: f32, m: &Move) {
+fn print_moveset(base_pos: &Position, base_order_idx: usize, _base_captures: u8, base_score: f32, m: &Move) {
 	let mut iter = m;
 
 	print!("Start score: {}, moves: ( {} ({}) [{}] = {} )", base_score, base_pos, base_order_idx, iter.captures , iter.depth_score);
 
 	loop {
-		if (iter.child.is_none()) {
+		if iter.child.is_none() {
 			break;
 		}
 		print!(" -> ");
 		print!("( {} ({}) [{}]", iter.position, iter.order_idx, iter.captures);
 		
-		if (iter.child.is_some()) {
+		if iter.child.is_some() {
 			iter = iter.child.as_ref().unwrap().as_ref();
 			print!(" = {})", iter.depth_score);
 		}
@@ -91,7 +91,7 @@ impl GomokuSolver {
 			let mut heuristic_check = Heuristic::from_game_state(&state);
 			let heurstic_check_score = heuristic_check.get_heuristic();
 
-			if (heuristical_score != heurstic_check_score) {
+			if heuristical_score != heurstic_check_score {
 				println!("MISMATCH HEURISTICAL VALUES: {} vs {}", heuristical_score, heurstic_check_score);
 				println!("{}", state.board);
 				println!("{}", old_heuristic.board);
