@@ -8,7 +8,7 @@ export interface Board {
 
 export enum Piece {
 	Max = 0,
-	Min = 1
+	Min = 1,
 }
 
 export interface GameState {
@@ -20,7 +20,7 @@ export interface GameState {
 	captures: number[];
 }
 
-export type Move = { 0: number; 1: number; responseTime?: number }[]
+export type Move = { 0?: number; 1?: number; responseTime?: number | null };
 
 export interface EvalState {
 	boardScore: number;
@@ -32,6 +32,14 @@ export interface BoardUpdateResponse {
 		data: number[];
 	};
 	captures: number[];
+}
+
+export interface HotseatResponse {
+	board: {
+		data: number[];
+	};
+	captures: [number, number];
+	score: number;
 }
 
 export interface CalculationResponse {
@@ -81,20 +89,20 @@ export const useGameStateStore = defineStore("gameState", () => {
 
 	const editState = ref<Partial<EvalState>>();
 
-	ws.emitter.on("boardUpdate", (b: BoardUpdateResponse) => {
+	function parseBoard(b: number[]): Board {
 		const newBoard = {} as Board;
 
-		console.log(b);
+		for (let i = 0; i < b.length; i++) {
+			if (b[i] == -1) continue;
 
-		for (let i = 0; i < b.board.data.length; i++) {
-			if (b.board.data[i] == -1) continue;
-
-			newBoard[i] = b.board.data[i];
+			newBoard[i] = b[i];
 		}
 
-		console.log(newBoard);
+		return newBoard;
+	}
 
-		currentState.value.board = newBoard;
+	ws.emitter.on("boardUpdate", (b: BoardUpdateResponse) => {
+		currentState.value.board = parseBoard(b.board.data);
 		currentState.value.captures = b.captures;
 	});
 
@@ -151,7 +159,6 @@ export const useGameStateStore = defineStore("gameState", () => {
 		const aiMove = response.moves[0]!;
 
 		console.log("ORDER_IDX_FIRST", aiMove.order_idx);
-		
 
 		if (aiMove) {
 			move_push.push(aiMove.position.x + aiMove.position.y * 19);
@@ -199,6 +206,8 @@ export const useGameStateStore = defineStore("gameState", () => {
 		editState,
 		editSettings,
 		moveHistory,
+		parseBoard,
+		ws,
 	};
 });
 

@@ -4,7 +4,7 @@
 			<h1 class="text-2xl font-semibold">ft_gomoku</h1>
 			<p class="text-sm">By okruitho</p>
 
-			<RouterView/>
+			<RouterView />
 
 			<!-- <div class="flex justify-between space-x-4 my-4">
 				<GoBoard

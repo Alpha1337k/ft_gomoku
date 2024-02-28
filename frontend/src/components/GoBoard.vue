@@ -44,10 +44,11 @@ const props = defineProps<{
 	currentPlayer: Piece;
 	isLoading: boolean;
 	isEditMode?: boolean;
+	invalidMoves: number[];
 	suggestedPosition?: {
-		player: Piece,
-		pos: number
-	}
+		player: Piece;
+		pos: number;
+	};
 }>();
 
 const gameState = useGameStateStore();
@@ -114,15 +115,15 @@ function resolveScore(v: number): string {
 function getHoverPlayer(): Piece {
 	if (props.isEditMode) {
 		if (ctrlPressed.value == true) {
-			return Piece.Min
+			return Piece.Min;
 		}
-		return Piece.Max
+		return Piece.Max;
 	}
-	return props.currentPlayer
+	return props.currentPlayer;
 }
 
 function getColor(pos: number) {
-	if (gameState.invalidMoves?.find((x) => x == pos)) {
+	if (props.invalidMoves?.find((x) => x == pos)) {
 		return "bg-yellow-500";
 	}
 

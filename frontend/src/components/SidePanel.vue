@@ -2,7 +2,7 @@
 	<div class="bg-slate-800 w-96 rounded-lg flex flex-col">
 		<div class="bg-slate-900 p-4 rounded-t-lg border-slate-900 border-lg flex justify-between">
 			<div>
-				<h2 v-if="gameState.currentState.moves.length == 0" class="font-semibold">Move to get started</h2>
+				<h2 v-if="props.moves.length == 0" class="font-semibold">Move to get started</h2>
 				<h2 v-else-if="gameState.currentState.score < 0" class="bg-slate-950 min-w-10 max-w-20 w-fit rounded text-sm px-1 text-slate-300">
 					{{ gameState.currentState.score.toPrecision(3).substring(0, 4) }}
 				</h2>
@@ -14,7 +14,9 @@
 				</h2>
 			</div>
 			<div class="flex-1 mx-2 text-sm" v-if="gameState.currentState.predictedMoves[0]">
-				<p :class="getIdxColor(gameState.currentState.predictedMoves[0].order_idx)">{{gameState.currentState.predictedMoves[0].order_idx}}</p>
+				<p :class="getIdxColor(gameState.currentState.predictedMoves[0].order_idx)">
+					{{ gameState.currentState.predictedMoves[0].order_idx }}
+				</p>
 			</div>
 			<div v-if="gameState.currentState.moves.length > 0" class="divide-x divide-slate-300 flex">
 				<p class="px-2 text-blue-300">{{ gameState.currentState.captures[0] }}</p>
@@ -29,7 +31,7 @@
 				<div class="text-slate-800 mx-2" v-if="i % 2 == 1">|</div>
 			</div>
 		</div>
-		<div class="space-y-2 my-2 flex-1">
+		<div class="space-y-2 my-2 flex-1 overflow-y-auto">
 			<div v-for="(move, i) in moves" :key="i" class="flex justify-between text-sm px-4 text-slate-200">
 				<div class="flex justify-start">
 					<p class="text-slate-500 w-6">{{ i }}.</p>
@@ -93,8 +95,8 @@ import { getHumanPosition, useGameStateStore, type Move } from "@/stores/GameSta
 import Slider from "@/components/Slider.vue";
 
 const props = defineProps<{
-	moves: Move[]
-}>()
+	moves: Move[];
+}>();
 
 const gameState = useGameStateStore();
 

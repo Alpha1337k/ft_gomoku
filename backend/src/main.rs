@@ -54,6 +54,23 @@ struct PosMoveRequest {
 	player: Piece
 }
 
+#[derive(Deserialize)]
+struct HotseatRequest {
+	board: serde_json::Map<String, Value>,
+	player: Piece,
+	in_move: Position,
+	captures: [usize; 2]
+}
+
+
+#[derive(Serialize)]
+struct HotseatResponse {
+	board: Board,
+	captures: [usize; 2],
+	score: f32
+}
+
+
 #[derive(Serialize)]
 struct BoardUpdateResponse<'a>
 {
@@ -131,6 +148,36 @@ fn handle_pos_moves(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 			data: serde_json::to_value(&moves).unwrap()
 		}).unwrap()
 	)).unwrap();
+}
+
+fn handle_hotseat_move(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) {
+	let request: HotseatRequest = serde_json::from_value(data).unwrap();
+
+	let mut board = Board::from_map(&request.board);
+
+	let mut captures = request.captures.clone();
+	let capture_count = board.set_move(request.in_move, request.player, None);
+
+	captures = [
+		if request.player == Piece::Max {captures[0] + capture_count} else {captures[0]}, 
+		if request.player == Piece::Min {captures[1] + capture_count} else {captures[1]}
+	];
+
+	let mut heuristic = Heuristic::from_board(&board);
+
+	let score = heuristic.get_heuristic();
+
+	sender.send_message(&OwnedMessage::Text(
+		serde_json::to_string(&WSMessage {
+			requestId: request_id,
+			subject: "hotseat_move".to_string(),
+			data: serde_json::to_value(&HotseatResponse {
+				board: board,
+				captures: captures,
+				score: resolve_infinity(score)
+			}).unwrap()
+		}).unwrap()
+	)).unwrap()
 }
 
 fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) {
@@ -226,6 +273,8 @@ fn main() {
 							handle_calculate(&mut sender, message.requestId, message.data);
 						} else if message.subject == "inv_moves" {
 							handle_pos_moves(&mut sender, message.requestId, message.data);
+						} else if message.subject == "hotseat_move" {
+							handle_hotseat_move(&mut sender, message.requestId, message.data);
 						} else if message.subject == "evaluate" {
 							let request: EvalRequest = serde_json::from_value(message.data).unwrap();
 							let board = Board::from_map(&request.board);
