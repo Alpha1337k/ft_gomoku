@@ -216,10 +216,7 @@ impl Heuristic<'_> {
 	}
 	
 	fn calculate_captures(value: &usize) -> f32 {
-		match value {
-			0..=5 => CAPTURE_SCORES[*value],
-			_ => panic!()
-		}
+		CAPTURE_SCORES[(*value).min(5)]
 	}
 
 	fn get_line(&self, pos: &Position, direction_idx: usize) -> Option<&Line> {
@@ -425,10 +422,10 @@ impl Heuristic<'_> {
 				 if _nb_1.relocate(direction[1][0], direction[1][1]).is_ok() {self.get_line(&_nb_1, i)} else {None},
 			];
 
-			// let neighbor_blocks = [
-			// 	if neighbor_lines[0].is_none() {self.board[&_nb_0]} else {Piece::Empty},
-			// 	if neighbor_lines[1].is_none() {self.board[&_nb_1]} else {Piece::Empty},
-			// ];
+			let neighbor_blocks = [
+				if neighbor_lines[0].is_none() {self.board[&_nb_0]} else {Piece::Empty},
+				if neighbor_lines[1].is_none() {self.board[&_nb_1]} else {Piece::Empty},
+			];
 
 			let capture_map = [
 				neighbor_lines[0].is_some_and(|x| x.player.is_opposite(&player) && neighbor_lines[0].unwrap().length == 2 && x.block_pos & 0x2 != 0),
@@ -450,27 +447,46 @@ impl Heuristic<'_> {
 				blocks |= neighbor_lines[0].unwrap().block_pos & 0x2;
 				length += neighbor_lines[0].unwrap().length;
 				new_calc -= neighbor_lines[0].unwrap().score;
+			} else if neighbor_blocks[0] == player {
+				if _nb_0.relocate(direction[0][0], direction[0][1]).is_ok() && self.board[&_nb_0] == player.get_opposite() {
+					blocks |= 0x2;
+				}
+				length += 1;
 			}
 
 			if neighbor_lines[1].is_some() && neighbor_lines[1].unwrap().player == player {
 				blocks |= neighbor_lines[1].unwrap().block_pos & 0x1;
 				length += neighbor_lines[1].unwrap().length;
 				new_calc -= neighbor_lines[1].unwrap().score;
+			} else if neighbor_blocks[1] == player {
+				if _nb_1.relocate(direction[1][0], direction[1][1]).is_ok() && self.board[&_nb_1] == player.get_opposite() {
+					blocks |= 0x1;
+				}
+				length += 1;
 			}
+
 			if neighbor_lines[0].is_some() && neighbor_lines[0].unwrap().player != player {
 				let neighbor_blocks = (neighbor_lines[0].unwrap().block_pos & 0x2) | 0x1;
+
+				blocks |= 0x2;
 
 				let new_n_score = Line::calculate(neighbor_blocks, neighbor_lines[0].unwrap().length, player.get_opposite());
 				new_calc -= neighbor_lines[0].unwrap().score;
 				new_calc += new_n_score;
+			} else if neighbor_blocks[0] == player.get_opposite() {
+				blocks |= 0x2;
 			}
 
 			if neighbor_lines[1].is_some() && neighbor_lines[1].unwrap().player != player {
 				let neighbor_blocks = (neighbor_lines[1].unwrap().block_pos & 0x1) | 0x2;
 
+				blocks |= 0x1;
+
 				let new_n_score = Line::calculate(neighbor_blocks, neighbor_lines[1].unwrap().length, player.get_opposite());
 				new_calc -= neighbor_lines[1].unwrap().score;
 				new_calc += new_n_score;
+			} else if neighbor_blocks[1] == player.get_opposite() {
+				blocks |= 0x1;
 			}
 
 			new_calc += Line::calculate(blocks, length, player);

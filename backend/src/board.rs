@@ -175,7 +175,7 @@ impl<'a> Iterator for BoardIterator {
 			return None;			
 		}
 
-		return Some(Position::from_u64(self.index));
+		return Some(Position::from_u64(self.index - 1));
 	}
 }
 
