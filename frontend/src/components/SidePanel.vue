@@ -3,14 +3,14 @@
 		<div class="bg-slate-900 p-4 rounded-t-lg border-slate-900 border-lg flex justify-between">
 			<div>
 				<h2 v-if="props.moves.length == 0" class="font-semibold">Move to get started</h2>
-				<h2 v-else-if="gameState.currentState.score < 0" class="bg-slate-950 min-w-10 max-w-20 w-fit rounded text-sm px-1 text-slate-300">
-					{{ gameState.currentState.score.toPrecision(3).substring(0, 4) }}
+				<h2 v-else-if="score < 0" class="bg-slate-950 min-w-10 max-w-20 w-fit rounded text-sm px-1 text-slate-300">
+					{{ score.toPrecision(3).substring(0, 4) }}
 				</h2>
-				<h2 v-else-if="gameState.currentState.score == 0" class="bg-slate-900 min-w-10 max-w-20 w-fit rounded text-sm px-1">
-					{{ gameState.currentState.score.toPrecision(3).substring(0, 4) }}
+				<h2 v-else-if="score == 0" class="bg-slate-900 min-w-10 max-w-20 w-fit rounded text-sm px-1">
+					{{ score.toPrecision(3).substring(0, 4) }}
 				</h2>
-				<h2 v-else-if="gameState.currentState.score > 0" class="bg-slate-300 text-black min-w-10 max-w-20 w-fit rounded text-sm px-1">
-					+{{ gameState.currentState.score.toPrecision(3).substring(0, 4) }}
+				<h2 v-else-if="score > 0" class="bg-slate-300 text-black min-w-10 max-w-20 w-fit rounded text-sm px-1">
+					+{{ score.toPrecision(3).substring(0, 4) }}
 				</h2>
 			</div>
 			<div class="flex-1 mx-2 text-sm" v-if="gameState.currentState.predictedMoves[0]">
@@ -46,7 +46,7 @@
 						{{ getHumanPosition(move[1]) }}
 					</p>
 				</div>
-				<p class="text-xs text-slate-600">{{ moves.responseTime?.toFixed(0) || "?" }} ms</p>
+				<p class="text-xs text-slate-600">{{ move.responseTime?.toFixed(0) || "?" }} ms</p>
 			</div>
 		</div>
 
@@ -100,11 +100,11 @@ import Slider from "@/components/Slider.vue";
 
 const props = defineProps<{
 	moves: Move[];
+	score: number
 }>();
 
 const gameState = useGameStateStore();
 
-console.log(gameState.currentState.score);
 
 function getIdxColor(idx: number) {
 	if (idx < 5) {
