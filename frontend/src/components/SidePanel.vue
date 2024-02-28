@@ -30,18 +30,18 @@
 			</div>
 		</div>
 		<div class="space-y-2 my-2 flex-1">
-			<div v-for="(moves, i) in gameState.moveHistory" :key="i" class="flex justify-between text-sm px-4 text-slate-200">
+			<div v-for="(move, i) in moves" :key="i" class="flex justify-between text-sm px-4 text-slate-200">
 				<div class="flex justify-start">
 					<p class="text-slate-500 w-6">{{ i }}.</p>
-					<p class="w-10 px-1" :class="moves[1] == undefined ? 'bg-slate-600 rounded border-b-4 border-slate-500' : ''">
-						{{ getHumanPosition(moves[0]) }}
+					<p class="w-10 px-1" :class="move[1] == undefined ? 'bg-slate-600 rounded border-b-4 border-slate-500' : ''">
+						{{ getHumanPosition(move[0]) }}
 					</p>
 					<p
 						class="w-10 px-1"
-						v-if="moves[1] != undefined"
-						:class="i == gameState.currentState.moves.length - 1 ? 'bg-slate-600 rounded border-b-4 border-slate-500' : ''"
+						v-if="move[1] != undefined"
+						:class="i == moves.length - 1 ? 'bg-slate-600 rounded border-b-4 border-slate-500' : ''"
 					>
-						{{ getHumanPosition(moves[1]) }}
+						{{ getHumanPosition(move[1]) }}
 					</p>
 				</div>
 				<p class="text-xs text-slate-600">{{ moves.responseTime?.toFixed(0) || "?" }} ms</p>
@@ -89,8 +89,12 @@
 </template>
 
 <script setup lang="ts">
-import { getHumanPosition, useGameStateStore } from "@/stores/GameState";
+import { getHumanPosition, useGameStateStore, type Move } from "@/stores/GameState";
 import Slider from "@/components/Slider.vue";
+
+const props = defineProps<{
+	moves: Move[]
+}>()
 
 const gameState = useGameStateStore();
 

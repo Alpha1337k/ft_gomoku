@@ -6,6 +6,11 @@ export interface Board {
 	[key: number]: number | undefined;
 }
 
+export enum Piece {
+	Max = 0,
+	Min = 1
+}
+
 export interface GameState {
 	board: Board;
 	currentTurn: number;
@@ -14,6 +19,8 @@ export interface GameState {
 	predictedMoves: number[];
 	captures: number[];
 }
+
+export type Move = { 0: number; 1: number; responseTime?: number }[]
 
 export interface EvalState {
 	boardScore: number;
@@ -42,7 +49,7 @@ export interface CalculationResponse {
 export const useGameStateStore = defineStore("gameState", () => {
 	const stateHistory = ref<GameState[]>([]);
 
-	const moveHistory = ref<{ 0: number; 1: number; responseTime: number }[]>([]);
+	const moveHistory = ref<Move[]>([]);
 
 	const currentState = ref<GameState>({
 		score: 0,

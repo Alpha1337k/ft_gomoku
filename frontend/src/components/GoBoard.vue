@@ -1,11 +1,11 @@
 <template>
 	<div>
-		<div class="grid ml-6 grid-cols-19">
+		<div class="grid ml-6 grid-cols-19 w-[56rem]">
 			<div v-for="i in 19" :key="i" class="text-center">
 				{{ i - 1 }}
 			</div>
 		</div>
-		<div class="flex">
+		<div class="flex w-[57.5rem]">
 			<div class="grid grid-rows-19">
 				<div v-for="i in 19" :key="i" class="my-auto w-6 text-center">
 					{{ String.fromCharCode(i + 64) }}
@@ -35,13 +35,19 @@
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from "vue";
-import { useGameStateStore, type Board } from "@/stores/GameState";
+import { Piece, useGameStateStore, type Board } from "@/stores/GameState";
 
 const hoverPos = ref<number>();
 
 const props = defineProps<{
 	boardPositions: Board;
+	currentPlayer: Piece;
 	isLoading: boolean;
+	isEditMode?: boolean;
+	suggestedPosition?: {
+		player: Piece,
+		pos: number
+	}
 }>();
 
 const gameState = useGameStateStore();
@@ -69,7 +75,7 @@ const evalPrioMap = computed(() => {
 	return mapped;
 });
 
-function updateAlt(e: KeyboardEvent) {
+function updateCtrl(e: KeyboardEvent) {
 	if (e.ctrlKey && gameState.isEditMode) {
 		ctrlPressed.value = true;
 	} else {
@@ -77,12 +83,12 @@ function updateAlt(e: KeyboardEvent) {
 	}
 }
 
-document.addEventListener("keydown", updateAlt);
-document.addEventListener("keyup", updateAlt);
+document.addEventListener("keydown", updateCtrl);
+document.addEventListener("keyup", updateCtrl);
 
 onUnmounted(() => {
-	document.removeEventListener("keydown", updateAlt);
-	document.removeEventListener("keyup", updateAlt);
+	document.removeEventListener("keydown", updateCtrl);
+	document.removeEventListener("keyup", updateCtrl);
 });
 
 function handleRightClick(pos: number) {
@@ -103,6 +109,16 @@ function resolveScore(v: number): string {
 		return "-Inf";
 	}
 	return v.toPrecision(3).substring(0, 4);
+}
+
+function getHoverPlayer(): Piece {
+	if (props.isEditMode) {
+		if (ctrlPressed.value == true) {
+			return Piece.Min
+		}
+		return Piece.Max
+	}
+	return props.currentPlayer
 }
 
 function getColor(pos: number) {
@@ -129,10 +145,20 @@ function getColor(pos: number) {
 			return "bg-red-800";
 		}
 	}
-	if (hoverPos.value == pos && ctrlPressed.value == false) {
+
+	const player = getHoverPlayer();
+
+	if (hoverPos.value == pos && player == Piece.Max) {
 		return "bg-blue-800/75";
 	}
-	if (hoverPos.value == pos && ctrlPressed.value == true) {
+	if (hoverPos.value == pos && player == Piece.Min) {
+		return "bg-red-800/75";
+	}
+
+	if (props.suggestedPosition && props.suggestedPosition.pos == pos) {
+		if (props.suggestedPosition.player == Piece.Max) {
+			return "bg-blue-800/75";
+		}
 		return "bg-red-800/75";
 	}
 }

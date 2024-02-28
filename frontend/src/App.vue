@@ -4,7 +4,9 @@
 			<h1 class="text-2xl font-semibold">ft_gomoku</h1>
 			<p class="text-sm">By okruitho</p>
 
-			<div class="flex justify-between space-x-4 my-4">
+			<RouterView/>
+
+			<!-- <div class="flex justify-between space-x-4 my-4">
 				<GoBoard
 					@move-chosen="(v) => handleNewMove(v)"
 					:board-positions="gameState.currentState.board"
@@ -12,7 +14,7 @@
 					class="border border-slate-800 rounded-lg"
 				/>
 				<SidePanel />
-			</div>
+			</div> -->
 		</div>
 	</div>
 </template>
