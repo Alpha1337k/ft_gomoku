@@ -42,13 +42,9 @@
 								</div>
 							</div>
 							<div class="mt-5 sm:mt-6">
-								<button
-									type="button"
-									class="inline-flex w-full justify-center rounded-md bg-slate-800 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-									@click="$emit('newGame')"
-								>
+								<AppButton @click="$emit('newGame')">
 									Try again?
-								</button>
+								</AppButton>
 							</div>
 						</DialogPanel>
 					</TransitionChild>
@@ -63,6 +59,7 @@ import { ref } from "vue";
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from "@headlessui/vue";
 import { TrophyIcon } from "@heroicons/vue/24/outline";
 import { Piece } from "@/stores/GameState";
+import AppButton from '@/components/AppButton.vue';
 
 const props = defineProps<{
 	open: boolean;

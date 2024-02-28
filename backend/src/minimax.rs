@@ -1,5 +1,27 @@
 use std::{f32::{INFINITY}, io::Error};
-use crate::{board::Board, heuristic::Heuristic, piece::{Piece, PieceWrap}, position::Position, CalculateRequest};
+use crate::{board::Board, heuristic::{EvaluationScore, Heuristic}, piece::{Piece, PieceWrap}, position::Position, CalculateRequest};
+
+
+fn print_moveset(base_pos: &Position, base_order_idx: usize, _base_captures: u8, base_score: f32, m: &Move) {
+	let mut iter = m;
+
+	print!("Start score: {}, moves: ( {} ({}) [{}] = {} )", base_score, base_pos, base_order_idx, iter.captures , iter.depth_score);
+
+	loop {
+		if iter.child.is_none() {
+			break;
+		}
+		print!(" -> ");
+		print!("( {} ({}) [{}]", iter.position, iter.order_idx, iter.captures);
+		
+		if iter.child.is_some() {
+			iter = iter.child.as_ref().unwrap().as_ref();
+			print!(" = {})", iter.depth_score);
+		}
+	}
+	println!();
+}
+
 
 #[derive(Debug)]
 pub struct Move {
@@ -22,29 +44,9 @@ pub struct GomokuSolver
 {
 	pub board: Board,
 	pub captures: [usize; 2],
-	turn_idx: u8,
 	depth: usize,
+	pub player: Piece,
 	pub depth_entries: Vec<usize>
-}
-
-fn print_moveset(base_pos: &Position, base_order_idx: usize, _base_captures: u8, base_score: f32, m: &Move) {
-	let mut iter = m;
-
-	print!("Start score: {}, moves: ( {} ({}) [{}] = {} )", base_score, base_pos, base_order_idx, iter.captures , iter.depth_score);
-
-	loop {
-		if iter.child.is_none() {
-			break;
-		}
-		print!(" -> ");
-		print!("( {} ({}) [{}]", iter.position, iter.order_idx, iter.captures);
-		
-		if iter.child.is_some() {
-			iter = iter.child.as_ref().unwrap().as_ref();
-			print!(" = {})", iter.depth_score);
-		}
-	}
-	println!();
 }
 
 impl GomokuSolver {
@@ -52,10 +54,10 @@ impl GomokuSolver {
 
 		let mut solver = GomokuSolver{
 			board: Board::from_map(&msg.board),
-			turn_idx: msg.turn_idx,
 			captures: msg.captures,
 			depth_entries: vec![0; msg.depth + 1],
 			depth: msg.depth,
+			player: msg.player,
 		};
 
 		if msg.in_move.is_some() {
@@ -116,7 +118,17 @@ impl GomokuSolver {
 			};
 		}
 
-		let possible_moves = heuristic.get_moves(state.player);
+		let mut possible_moves = heuristic.get_moves(state.player);
+
+		if (possible_moves.len() == 0 && state.board[&Position::new(10, 10)].is_empty()) {
+			possible_moves.push((Position::new(10, 10), EvaluationScore {
+				capture_count: 0,
+				capture_map: 0,
+				score: 0.0
+			}));
+		} else {
+			panic!()
+		}
 
 		for (i, pos_move) in possible_moves.iter().enumerate() {
 			let mut new_board = state.board.clone();
@@ -185,7 +197,7 @@ impl GomokuSolver {
 		let game_state = GameState {
 			board: self.board.clone(),
 			captures: self.captures,
-			player: Piece::Min,
+			player: self.player,
 		};
 
 		let mut heuristic = Heuristic::from_game_state(&game_state);

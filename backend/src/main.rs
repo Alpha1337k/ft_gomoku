@@ -34,7 +34,6 @@ pub struct EvalRequest {
 pub struct CalculateRequest {
 	board: serde_json::Map<String, Value>,
 	depth: usize,
-	turn_idx: u8,
 	in_move: Option<Position>,
 	player: Piece,
 	captures: [usize; 2],

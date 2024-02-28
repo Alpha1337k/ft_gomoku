@@ -144,7 +144,6 @@ export const useGameStateStore = defineStore("gameState", () => {
 		response = await ws.sendMessage<CalculationResponse>("calculate", {
 			depth: depth.value,
 			board: currentState.value.board,
-			turn_idx: currentState.value.currentTurn,
 			in_move: {
 				x: move % 19,
 				y: Math.floor(move / 19),

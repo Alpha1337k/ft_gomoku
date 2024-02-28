@@ -49,7 +49,11 @@
 				<p class="text-xs text-slate-600">{{ moves.responseTime?.toFixed(0) || "?" }} ms</p>
 			</div>
 		</div>
-		<div class="h-64 bg-slate-900 rounded-b-lg flex flex-col">
+
+		<slot name="bottom">
+
+		</slot>
+		<!-- <div class="h-64 bg-slate-900 rounded-b-lg flex flex-col">
 			<div class="flex divide-x divide-slate-500">
 				<button
 					@click="gameState.setMode('play')"
@@ -86,7 +90,7 @@
 			>
 				Reset
 			</button>
-		</div>
+		</div> -->
 	</div>
 </template>
 

@@ -42,6 +42,7 @@ const hoverPos = ref<number>();
 const props = defineProps<{
 	boardPositions: Board;
 	currentPlayer: Piece;
+	suggestedMove?: number;
 	isLoading: boolean;
 	isEditMode?: boolean;
 	invalidMoves: number[];
@@ -125,6 +126,10 @@ function getHoverPlayer(): Piece {
 function getColor(pos: number) {
 	if (props.invalidMoves?.find((x) => x == pos)) {
 		return "bg-yellow-500";
+	}
+
+	if (pos == props.suggestedMove) {
+		return "bg-orange-500";
 	}
 
 	if (props.boardPositions[pos] === 0) {
