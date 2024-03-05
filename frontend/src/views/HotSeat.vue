@@ -19,11 +19,10 @@
 			</PlayerBanner>
 		</div>
 		<SidePanel :moves="moves">
-		
 			<template #bottom>
 				<AppButton :disabled="hintLoading" @click="loadHint" class="bg-slate-900 transition rounded-t-none h-12 !text-base items-center">
-					{{ hintLoading ? 'loading..' : 'Request hint' }} 
-				</AppButton>			
+					{{ hintLoading ? "loading.." : "Request hint" }}
+				</AppButton>
 			</template>
 		</SidePanel>
 	</div>
@@ -62,7 +61,7 @@ function reloadGame() {
 async function loadHint() {
 	hintLoading.value = true;
 
-	const calculationResponse = await gameState.ws.sendMessage<CalculationResponse>('calculate', {
+	const calculationResponse = await gameState.ws.sendMessage<CalculationResponse>("calculate", {
 		board: gameBoard.value,
 		depth: 5,
 		captures: captures.value,
@@ -70,7 +69,6 @@ async function loadHint() {
 	});
 
 	hintLoading.value = false;
-
 
 	const move = calculationResponse.moves.shift()!;
 

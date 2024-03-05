@@ -423,8 +423,8 @@ impl Heuristic<'_> {
 			];
 
 			let neighbor_blocks = [
-				if neighbor_lines[0].is_none() {self.board[&_nb_0]} else {Piece::Empty},
-				if neighbor_lines[1].is_none() {self.board[&_nb_1]} else {Piece::Empty},
+				if neighbor_lines[0].is_none() && _nb_0.check_pos().is_ok() {self.board[&_nb_0]} else {Piece::Empty},
+				if neighbor_lines[1].is_none() && _nb_1.check_pos().is_ok() {self.board[&_nb_1]} else {Piece::Empty},
 			];
 
 			let capture_map = [

@@ -171,7 +171,7 @@ impl<'a> Iterator for BoardIterator {
 	fn next(&mut self) -> Option<Self::Item> {
 		self.index += 1;
 
-		if self.index >= 361 {
+		if self.index >= 362 {
 			return None;			
 		}
 

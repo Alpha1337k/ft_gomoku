@@ -11,6 +11,12 @@ export enum Piece {
 	Min = 1,
 }
 
+export interface FutureMove {
+	cutoff_at: number;
+	order_idx: number;
+	position: { x: number; y: number };
+}
+
 export interface GameState {
 	board: Board;
 	currentTurn: number;
@@ -20,7 +26,7 @@ export interface GameState {
 	captures: number[];
 }
 
-export type Move = { 0?: number; 1?: number; responseTime?: number | null };
+export type Move = { 0?: number; 1?: number; responseTime?: number | null; order_idx?: number };
 
 export interface EvalState {
 	boardScore: number;
@@ -43,14 +49,8 @@ export interface HotseatResponse {
 }
 
 export interface CalculationResponse {
-	moves: {
-		position: {
-			x: number;
-			y: number;
-		};
-		order_idx: number;
-		score: number;
-	}[];
+	moves: FutureMove[];
+	current_score: number;
 	score: number;
 }
 

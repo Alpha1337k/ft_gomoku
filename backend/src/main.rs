@@ -44,6 +44,7 @@ struct CalculationResponse
 {
 	moves: Vec<MoveFlat>,
 	depth_hits: Vec<usize>,
+	current_score: f32,
 	score: f32,
 }
 
@@ -208,6 +209,8 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 			if request.player.get_opposite() == Piece::Min {solver.captures[1] + capture_count} else {solver.captures[1]}
 	];
 
+	let current_score = resolve_infinity(Heuristic::from_board(&new_board).get_heuristic());
+
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage{
 			requestId: None,
@@ -225,6 +228,7 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 			subject: "calculate".to_string(),
 			data: serde_json::to_value(CalculationResponse{
 				score: resolve_infinity(result.score),
+				current_score: current_score,
 				depth_hits: solver.depth_entries,
 				moves: get_moves(&result),
 			}).unwrap()

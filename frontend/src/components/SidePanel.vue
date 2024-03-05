@@ -23,14 +23,7 @@
 				<p class="px-2 text-red-400">{{ gameState.currentState.captures[1] }}</p>
 			</div>
 		</div>
-		<div class="flex bg-slate-950 px-2 space-x-2 text-slate-400 text-sm">
-			<div :key="i" v-for="(move, i) in gameState.currentState.predictedMoves.slice(1)" class="flex">
-				<p :class="getIdxColor(move.order_idx)">
-					{{ getHumanPosition(move.position.x + move.position.y * 19) }}
-				</p>
-				<div class="text-slate-800 mx-2" v-if="i % 2 == 1">|</div>
-			</div>
-		</div>
+		<slot name="top"> </slot>
 		<div class="space-y-2 my-2 flex-1 overflow-y-auto">
 			<div v-for="(move, i) in moves" :key="i" class="flex justify-between text-sm px-4 text-slate-200">
 				<div class="flex justify-start">
@@ -50,9 +43,7 @@
 			</div>
 		</div>
 
-		<slot name="bottom">
-
-		</slot>
+		<slot name="bottom"> </slot>
 		<!-- <div class="h-64 bg-slate-900 rounded-b-lg flex flex-col">
 			<div class="flex divide-x divide-slate-500">
 				<button
@@ -100,11 +91,10 @@ import Slider from "@/components/Slider.vue";
 
 const props = defineProps<{
 	moves: Move[];
-	score: number
+	score: number;
 }>();
 
 const gameState = useGameStateStore();
-
 
 function getIdxColor(idx: number) {
 	if (idx < 5) {

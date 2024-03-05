@@ -1,6 +1,6 @@
 <template>
 	<TransitionRoot as="template" :show="open">
-		<Dialog as="div" class="relative z-10">
+		<Dialog as="div" class="relative z-10" @close="$emit('close')">
 			<TransitionChild
 				as="template"
 				enter="ease-out duration-300"
@@ -42,9 +42,7 @@
 								</div>
 							</div>
 							<div class="mt-5 sm:mt-6">
-								<AppButton @click="$emit('newGame')">
-									Try again?
-								</AppButton>
+								<AppButton @click="$emit('newGame')"> Try again? </AppButton>
 							</div>
 						</DialogPanel>
 					</TransitionChild>
@@ -59,7 +57,7 @@ import { ref } from "vue";
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from "@headlessui/vue";
 import { TrophyIcon } from "@heroicons/vue/24/outline";
 import { Piece } from "@/stores/GameState";
-import AppButton from '@/components/AppButton.vue';
+import AppButton from "@/components/AppButton.vue";
 
 const props = defineProps<{
 	open: boolean;
@@ -67,5 +65,5 @@ const props = defineProps<{
 	playerName: string;
 }>();
 
-const emit = defineEmits(["newGame"]);
+const emit = defineEmits(["newGame", "close"]);
 </script>

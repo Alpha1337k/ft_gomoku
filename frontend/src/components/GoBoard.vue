@@ -35,7 +35,7 @@
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from "vue";
-import { Piece, useGameStateStore, type Board } from "@/stores/GameState";
+import { Piece, useGameStateStore, type Board, type EvalState } from "@/stores/GameState";
 
 const hoverPos = ref<number>();
 
@@ -45,6 +45,8 @@ const props = defineProps<{
 	suggestedMove?: number;
 	isLoading: boolean;
 	isEditMode?: boolean;
+	editState?: EvalState;
+	latestMove?: { 0?: number; 1?: number };
 	invalidMoves: number[];
 	suggestedPosition?: {
 		player: Piece;
@@ -52,9 +54,7 @@ const props = defineProps<{
 	};
 }>();
 
-const gameState = useGameStateStore();
-
-const emit = defineEmits(["moveChosen"]);
+const emit = defineEmits(["moveChosen", "editPosChange"]);
 const ctrlPressed = ref(false);
 
 const evalPrioMap = computed(() => {
@@ -65,9 +65,9 @@ const evalPrioMap = computed(() => {
 		};
 	} = {};
 
-	if (gameState.isEditMode && gameState.editState?.moves) {
-		for (let i = 0; i < gameState.editState.moves.length; i++) {
-			const move = gameState.editState.moves[i];
+	if (props.isEditMode && props.editState?.moves) {
+		for (let i = 0; i < props.editState.moves.length; i++) {
+			const move = props.editState.moves[i];
 			mapped[move[0].x + move[0].y * 19] = {
 				idx: i,
 				score: move[1][0],
@@ -78,7 +78,7 @@ const evalPrioMap = computed(() => {
 });
 
 function updateCtrl(e: KeyboardEvent) {
-	if (e.ctrlKey && gameState.isEditMode) {
+	if (e.ctrlKey && props.isEditMode) {
 		ctrlPressed.value = true;
 	} else {
 		ctrlPressed.value = false;
@@ -94,9 +94,10 @@ onUnmounted(() => {
 });
 
 function handleRightClick(pos: number) {
-	if (gameState.isEditMode) {
+	if (props.isEditMode) {
 		props.boardPositions[pos] = undefined;
-		gameState.submitEdit();
+		emit("editPosChange", pos);
+		// gameState.submitEdit();
 	}
 }
 
@@ -133,19 +134,14 @@ function getColor(pos: number) {
 	}
 
 	if (props.boardPositions[pos] === 0) {
-		if (gameState.moveHistory[gameState.moveHistory.length - 1]?.[0] === pos) {
+		if (props.latestMove?.[0] == pos) {
 			return "bg-blue-500";
 		} else {
 			return "bg-blue-800";
 		}
 	}
 	if (props.boardPositions[pos] === 1) {
-		if (
-			(gameState.moveHistory[gameState.moveHistory.length - 1]?.[1] !== undefined &&
-				gameState.moveHistory[gameState.moveHistory.length - 1][1] === pos) ||
-			(gameState.moveHistory[gameState.moveHistory.length - 1]?.[1] === undefined &&
-				gameState.moveHistory[gameState.moveHistory.length - 2]?.[1] === pos)
-		) {
+		if (props.latestMove?.[1] == pos) {
 			return "bg-red-700";
 		} else {
 			return "bg-red-800";
@@ -170,22 +166,22 @@ function getColor(pos: number) {
 }
 
 function handleClick(event: PointerEvent, pos: number) {
-	if (gameState.isEditMode) {
+	if (props.isEditMode) {
 		if (event.ctrlKey) {
 			props.boardPositions[pos] = 1;
 		} else {
 			props.boardPositions[pos] = 0;
 		}
-
-		gameState.submitEdit();
 	}
 
 	if (props.boardPositions[pos] != undefined) {
 		return;
 	}
 
-	if (gameState.isEditMode == false) {
+	if (props.isEditMode == false) {
 		emit("moveChosen", pos);
+	} else {
+		emit("editPosChange", pos);
 	}
 }
 </script>

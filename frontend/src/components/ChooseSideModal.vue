@@ -28,22 +28,18 @@
 							class="relative transform overflow-hidden rounded-lg bg-slate-900 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6"
 						>
 							<div>
-								<div
-									class="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
-								>
+								<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full">
 									<QuestionMarkCircleIcon class="h-6 w-6 text-slate-200" />
 								</div>
 								<div class="mt-3 text-center sm:mt-5">
-									<DialogTitle as="h3" class="text-base font-semibold leading-6 text-slate-200">What side do you want to play on?</DialogTitle>
+									<DialogTitle as="h3" class="text-base font-semibold leading-6 text-slate-200"
+										>What side do you want to play on?</DialogTitle
+									>
 								</div>
 							</div>
 							<div class="mt-5 sm:mt-6 flex space-x-2">
-								<AppButton @click="$emit('chosen', Piece.Max)" class="!bg-blue-500">
-									Blue
-								</AppButton>
-								<AppButton @click="$emit('chosen', Piece.Min)" class="!bg-red-500">
-									Red
-								</AppButton>
+								<AppButton @click="$emit('chosen', Piece.Max)" class="!bg-blue-500"> Blue </AppButton>
+								<AppButton @click="$emit('chosen', Piece.Min)" class="!bg-red-500"> Red </AppButton>
 							</div>
 						</DialogPanel>
 					</TransitionChild>
@@ -54,16 +50,13 @@
 </template>
 
 <script setup lang="ts">
-import { QuestionMarkCircleIcon } from '@heroicons/vue/24/outline';
+import { QuestionMarkCircleIcon } from "@heroicons/vue/24/outline";
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from "@headlessui/vue";
-import { Piece } from '@/stores/GameState';
-import AppButton from './AppButton.vue';
+import { Piece } from "@/stores/GameState";
+import AppButton from "./AppButton.vue";
 
-
-const emit = defineEmits(['chosen']);
+const emit = defineEmits(["chosen"]);
 const props = defineProps<{
-	open: boolean
-}>()
-
-
+	open: boolean;
+}>();
 </script>

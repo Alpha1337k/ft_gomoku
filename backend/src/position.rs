@@ -18,7 +18,7 @@ impl Position {
 		}.check_pos().unwrap();
 	}
 
-	fn check_pos(&self) -> Result<&Position, &str> {
+	pub fn check_pos(&self) -> Result<&Position, &str> {
 		if self.x >= 19 || self.y >= 19 {
 			return Err("Invalid position");
 		}

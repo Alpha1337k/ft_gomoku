@@ -120,13 +120,13 @@ impl GomokuSolver {
 
 		let mut possible_moves = heuristic.get_moves(state.player);
 
-		if (possible_moves.len() == 0 && state.board[&Position::new(10, 10)].is_empty()) {
+		if possible_moves.len() == 0 && state.board[&Position::new(10, 10)].is_empty() {
 			possible_moves.push((Position::new(10, 10), EvaluationScore {
 				capture_count: 0,
 				capture_map: 0,
 				score: 0.0
 			}));
-		} else {
+		} else if possible_moves.len() == 0 {
 			panic!()
 		}
 
@@ -192,12 +192,12 @@ impl GomokuSolver {
 
 	pub fn solve<'a>(&mut self) -> Result<Move, Error>
 	{
-		println!("Starting minimax..\n");
+		println!("Starting minimax.. as player\n");
 
 		let game_state = GameState {
 			board: self.board.clone(),
 			captures: self.captures,
-			player: self.player,
+			player: self.player.get_opposite(),
 		};
 
 		let mut heuristic = Heuristic::from_game_state(&game_state);
