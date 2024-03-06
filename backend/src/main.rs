@@ -37,6 +37,7 @@ pub struct CalculateRequest {
 	in_move: Option<Position>,
 	player: Piece,
 	captures: [usize; 2],
+	is_hint: Option<bool>
 }
 
 #[derive(Serialize, Deserialize)]

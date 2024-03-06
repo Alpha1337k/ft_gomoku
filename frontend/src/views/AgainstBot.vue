@@ -160,6 +160,7 @@ async function loadHint() {
 		depth: 5,
 		captures: captures.value,
 		player: player.value,
+		is_hint: true
 	});
 
 	hintLoading.value = false;

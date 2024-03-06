@@ -1,5 +1,5 @@
 <template>
-	<div class="flex bg-slate-950 px-2 space-x-2 text-slate-400 text-sm">
+	<div class="flex bg-slate-950 h-6 px-2 space-x-2 text-slate-400 text-sm">
 		<div :key="i" v-for="(move, i) in moves" class="flex">
 			<p :class="getIdxColor(move.order_idx)">
 				{{ getHumanPosition(move.position.x + move.position.y * 19) }}
