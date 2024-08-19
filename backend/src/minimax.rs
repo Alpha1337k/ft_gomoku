@@ -2,17 +2,17 @@ use std::{f32::{INFINITY}, io::Error};
 use crate::{board::Board, heuristic::{EvaluationScore, Heuristic}, piece::{Piece, PieceWrap}, position::Position, CalculateRequest};
 
 
-fn print_moveset(base_pos: &Position, base_order_idx: usize, _base_captures: u8, base_score: f32, m: &Move) {
+fn print_moveset(base_pos: &Position, base_order_idx: usize, base_score: f32, m: &Move) {
 	let mut iter = m;
 
-	print!("Start score: {}, moves: ( {} ({}) [{}] = {} )", base_score, base_pos, base_order_idx, iter.captures , iter.depth_score);
+	print!("Start score: {}, moves: ( {} ({}) [{}, {}] = {} )", base_score, base_pos, base_order_idx, iter.captures[0], iter.captures[1] , iter.depth_score);
 
 	loop {
 		if iter.child.is_none() {
 			break;
 		}
 		print!(" -> ");
-		print!("( {} ({}) [{}]", iter.position, iter.order_idx, iter.captures);
+		print!("( {} ({}) [{}, {}]", iter.position, iter.order_idx, iter.captures[0], iter.captures[1]);
 		
 		if iter.child.is_some() {
 			iter = iter.child.as_ref().unwrap().as_ref();
@@ -29,7 +29,8 @@ pub struct Move {
 	pub depth_score: f32,
 	pub depth_hit: usize,
 	pub position: Position,
-	pub captures: u8,
+	pub capture_map: u8,
+	pub captures: [usize; 2],
 	pub order_idx: usize,
 	pub cutoff_at: usize,
 	pub child: Option<Box<Move>>,
@@ -45,7 +46,7 @@ pub struct GomokuSolver
 {
 	pub board: Board,
 	pub captures: [usize; 2],
-	depth: usize,
+	pub depth: usize,
 	pub player: Piece,
 	pub depth_entries: Vec<usize>,
 	pub is_hint: Option<bool>
@@ -80,7 +81,7 @@ impl GomokuSolver {
 		let mut heuristic = old_heuristic.from_new_state(&state);
 		let mut found_move = false;
 
-		self.depth_entries[depth] += 1;
+		self.depth_entries[self.depth - depth] += 1;
 		let heuristical_score = heuristic.get_heuristic();
 
 		let mut move_store = Move {
@@ -90,26 +91,10 @@ impl GomokuSolver {
 			depth_score: heuristical_score,
 			depth_hit: depth,
 			order_idx: 0,
-			captures: 0,
+			capture_map: 0,
+			captures: heuristic.captures.clone(),
 			position: Position::new(0, 0)
 		};
-
-		// if (depth == 0) {
-			let mut heuristic_check = Heuristic::from_game_state(&state);
-			let heurstic_check_score = heuristic_check.get_heuristic();
-
-			if heuristical_score != heurstic_check_score {
-				println!("MISMATCH HEURISTICAL VALUES: {} vs {}", heuristical_score, heurstic_check_score);
-				println!("{}", state.board);
-				println!("{}", old_heuristic.board);
-				
-				dbg!(heuristic.lines);
-				dbg!(heuristic_check.lines);
-				dbg!(&old_heuristic.lines);
-				panic!();
-			}
-		// }
-
 
 		if depth == 0 || heuristical_score.is_infinite() {
 			return Move {
@@ -118,7 +103,8 @@ impl GomokuSolver {
 				score: heuristical_score,
 				depth_score: heuristical_score,
 				depth_hit: depth,
-				captures: 0,
+				capture_map: 0,
+				captures: heuristic.captures.clone(),
 				order_idx: 0,
 				position: Position::new(0, 0)
 			};
@@ -135,6 +121,8 @@ impl GomokuSolver {
 		} else if possible_moves.len() == 0 {
 			panic!()
 		}
+
+		move_store.cutoff_at = possible_moves.len();
 
 		for (i, pos_move) in possible_moves.iter().enumerate() {
 			let mut new_board = state.board.clone();
@@ -158,7 +146,7 @@ impl GomokuSolver {
 
 			if depth == self.depth {
 				println!("RES D: {}: pos: {} PRED: {} V:{}", node_result.depth_hit, pos_move.0, pos_move.1.score, node_result.score);
-				print_moveset(&pos_move.0, i, pos_move.1.capture_map, heuristical_score, &node_result);
+				print_moveset(&pos_move.0, i, heuristical_score, &node_result);
 			}
 
 			if state.player.is_max() {
@@ -170,7 +158,7 @@ impl GomokuSolver {
 					move_store.score = node_result.score;
 					move_store.position = pos_move.0;
 					move_store.order_idx = i;
-					move_store.captures = pos_move.1.capture_map;
+					move_store.capture_map = pos_move.1.capture_map;
 					move_store.depth_hit = node_result.depth_hit;
 					move_store.child = Some(Box::new(node_result));
 				}
@@ -190,7 +178,7 @@ impl GomokuSolver {
 					move_store.score = node_result.score;
 					move_store.position = pos_move.0;
 					move_store.order_idx = i;
-					move_store.captures = pos_move.1.capture_map;
+					move_store.capture_map = pos_move.1.capture_map;
 					move_store.depth_hit = node_result.depth_hit;
 					move_store.child = Some(Box::new(node_result));
 				}
@@ -210,7 +198,7 @@ impl GomokuSolver {
 
 	pub fn solve<'a>(&mut self) -> Result<Move, Error>
 	{
-		println!("Starting minimax.. as player\n");
+		println!("Starting minimax.. as player {}\n", if self.is_hint.is_some_and(|x| x == true) { self.player } else {self.player.get_opposite() });
 
 		let game_state = GameState {
 			board: self.board.clone(),
@@ -220,22 +208,14 @@ impl GomokuSolver {
 
 		let mut heuristic = Heuristic::from_game_state(&game_state);
 
-		let _ = heuristic.get_heuristic();
+		let base_score = heuristic.get_heuristic();
 
 		let res = self.minimax(self.depth, &heuristic, &game_state, -INFINITY, INFINITY);
 
-		let mut iter = &res;
+		println!("----");
+		print_moveset(&res.position, res.order_idx, base_score, &res);
 
-		loop {
-			println!("M: {}", iter.position);
-			if iter.child.is_some() {
-				iter = iter.child.as_ref().unwrap().as_ref();
-			} else {
-				break;
-			}
-		}
-
-		println!("SCORE: {}", res.score);
+		println!("SCORE: {} - depth: {:?} = {}", res.score, &self.depth_entries, &self.depth_entries.iter().sum::<usize>());
 
 		return Ok(res);
 	}

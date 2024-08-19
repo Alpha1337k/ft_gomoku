@@ -1,20 +1,14 @@
 use std::{net::TcpStream, thread};
-
-use minimax::Move;
-use piece::PieceWrap;
-use position::Position;
+use backend::minimax::Move;
+use backend::piece::PieceWrap;
+use backend::position::Position;
+use backend::CalculateRequest;
 use serde_json::{Value};
 use websocket::sync::{Server, Writer};
 use websocket::OwnedMessage;
 use serde::{Deserialize, Serialize};
 
-use crate::{board::Board, heuristic::Heuristic, minimax::GomokuSolver, piece::Piece};
-mod minimax;
-mod board;
-mod position;
-mod piece;
-mod heuristic;
-mod move_calculator;
+use backend::{board::Board, heuristic::Heuristic, minimax::GomokuSolver, piece::Piece};
 
 #[derive(Serialize, Deserialize)]
 pub struct WSMessage
@@ -28,16 +22,6 @@ pub struct WSMessage
 pub struct EvalRequest {
 	board: serde_json::Map<String, Value>,
 	player: Piece
-}
-
-#[derive(Deserialize)]
-pub struct CalculateRequest {
-	board: serde_json::Map<String, Value>,
-	depth: usize,
-	in_move: Option<Position>,
-	player: Piece,
-	captures: [usize; 2],
-	is_hint: Option<bool>
 }
 
 #[derive(Serialize, Deserialize)]
@@ -237,6 +221,33 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 	)).unwrap();
 }
 
+fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) {
+	let request: EvalRequest = serde_json::from_value(data).unwrap();
+	let board = Board::from_map(&request.board);
+
+	let mut heuristic = Heuristic::from_board(&board);
+
+	let board_score = heuristic.get_heuristic();
+	let mut moves = heuristic.get_moves(request.player);
+
+	for i in 0..moves.len() {
+		moves[i].1.score = resolve_infinity(moves[i].1.score);
+	}
+
+	println!("Evaluating done");
+
+	sender.send_message(&OwnedMessage::Text(
+		serde_json::to_string(&WSMessage{
+			requestId: request_id,
+			subject: "evaluate".to_string(),
+			data: serde_json::to_value(EvaluationResponse{
+				boardScore: resolve_infinity(board_score),
+				moves: moves.iter().map(|f| (f.0, (f.1.score, f.1.capture_map))).collect()
+			}).unwrap()
+		}).unwrap()
+	)).unwrap();
+}
+
 fn main() {
 	let server = Server::bind("localhost:8000").unwrap();
 
@@ -273,37 +284,12 @@ fn main() {
 					OwnedMessage::Text(text) => {
 						let message: WSMessage = serde_json::from_str(&text).unwrap();
 
-						if message.subject == "calculate" {
-							handle_calculate(&mut sender, message.requestId, message.data);
-						} else if message.subject == "inv_moves" {
-							handle_pos_moves(&mut sender, message.requestId, message.data);
-						} else if message.subject == "hotseat_move" {
-							handle_hotseat_move(&mut sender, message.requestId, message.data);
-						} else if message.subject == "evaluate" {
-							let request: EvalRequest = serde_json::from_value(message.data).unwrap();
-							let board = Board::from_map(&request.board);
-
-							let mut heuristic = Heuristic::from_board(&board);
-
-							let board_score = heuristic.get_heuristic();
-							let mut moves = heuristic.get_moves(request.player);
-
-							for i in 0..moves.len() {
-								moves[i].1.score = resolve_infinity(moves[i].1.score);
-							}
-
-							println!("Evaluating done");
-
-							sender.send_message(&OwnedMessage::Text(
-								serde_json::to_string(&WSMessage{
-									requestId: message.requestId,
-									subject: "evaluate".to_string(),
-									data: serde_json::to_value(EvaluationResponse{
-										boardScore: resolve_infinity(board_score),
-										moves: moves.iter().map(|f| (f.0, (f.1.score, f.1.capture_map))).collect()
-									}).unwrap()
-								}).unwrap()
-							)).unwrap();
+						match message.subject.as_str() {
+							"calculate" => handle_calculate(&mut sender, message.requestId, message.data),
+							"inv_moves" => handle_pos_moves(&mut sender, message.requestId, message.data),
+							"hotseat_move" => handle_hotseat_move(&mut sender, message.requestId, message.data),
+							"evaluate" => handle_evaluate(&mut sender, message.requestId, message.data),
+							_ => println!("ft_gomoku: error: command not found: {}", message.subject)
 						}
 					}
 					_ => sender.send_message(&message).unwrap(),

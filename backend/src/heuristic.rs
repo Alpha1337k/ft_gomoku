@@ -30,8 +30,8 @@ const B0_SCORES: [f32; 6] = [
 const B1_SCORES: [f32; 6] = [
 	1.0,
 	2.0,
-	-2.0,
-	4.0,
+	0.0, // can capture
+	8.0,
 	16.0,
 	INFINITY
 ];
@@ -352,9 +352,10 @@ impl Heuristic<'_> {
 			if self.board[&pos].is_piece() {
 				for (i, direction) in DIRECTIONS.iter().enumerate() {
 					if self.get_line(&pos, i).is_some() {
-						// println!("get_line cached already");
+						// println!("CACHED");
 						continue;
 					}
+					// println!("NEW");
 					self.evaluate_position(pos, direction, i);
 				}
 			}
