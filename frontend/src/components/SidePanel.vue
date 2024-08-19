@@ -3,13 +3,14 @@
 		<div class="bg-slate-900 p-4 rounded-t-lg border-slate-900 border-lg flex justify-between">
 			<div>
 				<h2 v-if="props.moves.length == 0" class="font-semibold">Move to get started</h2>
-				<h2 v-else-if="score < 0" class="bg-slate-950 min-w-10 max-w-20 w-fit rounded text-sm px-1 text-slate-300">
+				<p v-if="score === undefined"></p>
+				<h2 v-else-if="score < 0" class="bg-red-600 min-w-10 max-w-20 w-fit rounded text-sm px-1 text-slate-300">
 					{{ score.toPrecision(3).substring(0, 4) }}
 				</h2>
 				<h2 v-else-if="score == 0" class="bg-slate-900 min-w-10 max-w-20 w-fit rounded text-sm px-1">
 					{{ score.toPrecision(3).substring(0, 4) }}
 				</h2>
-				<h2 v-else-if="score > 0" class="bg-slate-300 text-black min-w-10 max-w-20 w-fit rounded text-sm px-1">
+				<h2 v-else-if="score > 0" class="bg-blue-600 text-white min-w-10 max-w-20 w-fit rounded text-sm px-1">
 					+{{ score.toPrecision(3).substring(0, 4) }}
 				</h2>
 			</div>
@@ -28,7 +29,11 @@
 			<div v-for="(move, i) in moves" :key="i" class="flex justify-between text-sm px-4 text-slate-200">
 				<div class="flex justify-start">
 					<p class="text-slate-500 w-6">{{ i }}.</p>
-					<p class="w-10 px-1" :class="move[1] == undefined ? 'bg-slate-600 rounded border-b-4 border-slate-500' : ''">
+					<p
+						class="w-10 px-1"
+						v-if="move[0] != undefined"
+						:class="move[1] == undefined ? 'bg-slate-600 rounded border-b-4 border-slate-500' : ''"
+					>
 						{{ getHumanPosition(move[0]) }}
 					</p>
 					<p
@@ -91,7 +96,7 @@ import Slider from "@/components/Slider.vue";
 
 const props = defineProps<{
 	moves: Move[];
-	score: number;
+	score?: number;
 }>();
 
 const gameState = useGameStateStore();

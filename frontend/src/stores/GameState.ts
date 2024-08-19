@@ -1,6 +1,6 @@
 import { ref, computed, watchEffect, watch } from "vue";
 import { defineStore } from "pinia";
-import { ws } from "./api";
+import { WebSocketAPI } from "./api";
 
 export interface Board {
 	[key: number]: number | undefined;
@@ -22,7 +22,7 @@ export interface GameState {
 	currentTurn: number;
 	score: number;
 	moves: number[][];
-	predictedMoves: number[];
+	predictedMoves: FutureMove[];
 	captures: number[];
 }
 
@@ -57,6 +57,13 @@ export interface CalculationResponse {
 export const useGameStateStore = defineStore("gameState", () => {
 	const stateHistory = ref<GameState[]>([]);
 
+	const ws = ref(new WebSocketAPI());
+	const wsOK = ref<boolean | undefined>(undefined);
+
+	ws.value.initWebsocket((v) => {
+		wsOK.value = v;
+	});
+
 	const moveHistory = ref<Move[]>([]);
 
 	const currentState = ref<GameState>({
@@ -72,7 +79,7 @@ export const useGameStateStore = defineStore("gameState", () => {
 
 	async function loadInvalidMoves() {
 		invalidMoves.value = undefined;
-		const moves: { x: number; y: number }[] = await ws.sendMessage("inv_moves", {
+		const moves: { x: number; y: number }[] = await ws.value.sendMessage("inv_moves", {
 			board: currentState.value.board,
 			player: 0,
 		});
@@ -101,17 +108,17 @@ export const useGameStateStore = defineStore("gameState", () => {
 		return newBoard;
 	}
 
-	ws.emitter.on("boardUpdate", (b: BoardUpdateResponse) => {
+	ws.value.emitter.on("boardUpdate", (b: BoardUpdateResponse) => {
 		currentState.value.board = parseBoard(b.board.data);
 		currentState.value.captures = b.captures;
 	});
 
-	ws.emitter.on("ready", () => {
+	ws.value.emitter.on("ready", () => {
 		loadInvalidMoves();
 	});
 
 	async function submitEdit() {
-		const response = await ws.sendMessage<EvalState>("evaluate", {
+		const response = await ws.value.sendMessage<EvalState>("evaluate", {
 			board: currentState.value.board,
 			player: editSettings.value.is_maximizing ? 0 : 1,
 		});
@@ -141,7 +148,7 @@ export const useGameStateStore = defineStore("gameState", () => {
 		const move_push = [move];
 
 		const timerStart = performance.now();
-		response = await ws.sendMessage<CalculationResponse>("calculate", {
+		response = await ws.value.sendMessage<CalculationResponse>("calculate", {
 			depth: depth.value,
 			board: currentState.value.board,
 			in_move: {
@@ -207,6 +214,7 @@ export const useGameStateStore = defineStore("gameState", () => {
 		moveHistory,
 		parseBoard,
 		ws,
+		wsOK,
 	};
 });
 

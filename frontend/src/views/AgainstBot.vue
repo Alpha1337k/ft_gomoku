@@ -51,7 +51,7 @@
 					</div>
 					<div class="p-2 flex-1">
 						<div>
-							<p>Board d0 evaluation: {{ gameState.editState?.boardScore?.toFixed(4) ?? "?" }}</p>
+							<p>Board d0 evaluation: {{ editSettings.score?.toFixed(4) ?? "?" }}</p>
 						</div>
 						<div class="flex justify-between">
 							<p>View prio for blue?</p>
@@ -99,7 +99,7 @@ import {
 	useGameStateStore,
 	type HotseatResponse,
 	type CalculationResponse,
-	EvalState,
+	type EvalState,
 	type FutureMove,
 } from "@/stores/GameState";
 import { UserIcon } from "@heroicons/vue/24/outline";
@@ -160,7 +160,7 @@ async function loadHint() {
 		depth: 5,
 		captures: captures.value,
 		player: player.value,
-		is_hint: true
+		is_hint: true,
 	});
 
 	hintLoading.value = false;
@@ -187,17 +187,17 @@ gameState.ws.emitter.on("boardUpdate", (b: any) => {
 	}
 });
 
-async function handleMoveSet(pos?: number) {
+async function handleMoveSet(data?: { position: number; player?: number }) {
 	hint.value = undefined;
 
 	aiLoading.value = true;
 	const timerStart = performance.now();
 	const newState = await gameState.ws.sendMessage<CalculationResponse>("calculate", {
 		board: gameBoard.value,
-		in_move: pos
+		in_move: data
 			? {
-					x: pos % 19,
-					y: Math.floor(pos / 19),
+					x: data.position % 19,
+					y: Math.floor(data.position / 19),
 				}
 			: undefined,
 		depth: 5,
@@ -215,12 +215,12 @@ async function handleMoveSet(pos?: number) {
 
 	if (player.value == Piece.Max) {
 		moves.value.push({
-			"0": pos,
+			"0": data?.position,
 			"1": aiMove.position.x + aiMove.position.y * 19,
 			responseTime: timerEnd - timerStart,
 		});
 	} else {
-		if (pos) moves.value[moves.value.length - 1][1] = pos;
+		if (data) moves.value[moves.value.length - 1][1] = data.position;
 
 		moves.value.push({
 			"0": aiMove.position.x + aiMove.position.y * 19,
@@ -237,7 +237,11 @@ async function handleMoveSet(pos?: number) {
 	}
 }
 
-async function submitEdit() {
+async function submitEdit(data?: { position: number; player?: number }) {
+	if (data) {
+		gameBoard.value[data.position] = data.player;
+	}
+
 	const response = await gameState.ws.sendMessage<EvalState>("evaluate", {
 		board: gameBoard.value,
 		player: editSettings.value.is_maximizing ? Piece.Max : Piece.Min,

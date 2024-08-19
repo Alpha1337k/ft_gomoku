@@ -10,7 +10,7 @@ interface MessageBody {
 
 export class WebSocketAPI {
 	private ws!: WebSocket;
-	isOk = false;
+	private isOk = false;
 
 	emitter = new EventEmitter();
 
@@ -39,9 +39,7 @@ export class WebSocketAPI {
 		this.ws.onmessage = (ev) => this.handleMessage(ev);
 	}
 
-	constructor() {
-		this.initWebsocket(() => {});
-	}
+	constructor() {}
 
 	handleMessage(ev: MessageEvent<any>) {
 		const data: MessageBody = JSON.parse(ev.data);
@@ -87,5 +85,3 @@ export class WebSocketAPI {
 		});
 	}
 }
-
-export const ws = new WebSocketAPI();

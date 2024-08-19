@@ -19,10 +19,10 @@
 					class="cursor-pointer flex items-center justify-center h-auto"
 					@mouseover="hoverPos = i - 1"
 					@mouseleave="hoverPos = undefined"
-					@click="handleClick($event, i - 1)"
+					@click="handleClick($event as any, i - 1)"
 					@contextmenu.prevent="handleRightClick(i - 1)"
 				>
-					<div v-if="evalPrioMap[i - 1] == undefined" :class="getColor(i - 1)" class="rounded-xl h-5/6 w-5/6"></div>
+					<div v-if="evalPrioMap[i - 1] == undefined || hoverPos == i - 1" :class="getColor(i - 1)" class="rounded-xl h-5/6 w-5/6"></div>
 					<div v-else-if="evalPrioMap[i - 1]" class="h-10 absolute flex flex-col items-center">
 						<p class="text-white mx-auto text-center">{{ evalPrioMap[i - 1]?.idx }}</p>
 						<p class="mx-auto text-center text-sm text-gray-400">{{ resolveScore(evalPrioMap[i - 1]?.score) }}</p>
@@ -95,8 +95,7 @@ onUnmounted(() => {
 
 function handleRightClick(pos: number) {
 	if (props.isEditMode) {
-		props.boardPositions[pos] = undefined;
-		emit("editPosChange", pos);
+		emit("editPosChange", { position: pos, player: undefined });
 		// gameState.submitEdit();
 	}
 }
@@ -166,11 +165,13 @@ function getColor(pos: number) {
 }
 
 function handleClick(event: PointerEvent, pos: number) {
+	let player = undefined;
+
 	if (props.isEditMode) {
 		if (event.ctrlKey) {
-			props.boardPositions[pos] = 1;
+			player = 1;
 		} else {
-			props.boardPositions[pos] = 0;
+			player = 0;
 		}
 	}
 
@@ -179,9 +180,9 @@ function handleClick(event: PointerEvent, pos: number) {
 	}
 
 	if (props.isEditMode == false) {
-		emit("moveChosen", pos);
+		emit("moveChosen", { position: pos, player });
 	} else {
-		emit("editPosChange", pos);
+		emit("editPosChange", { position: pos, player });
 	}
 }
 </script>
