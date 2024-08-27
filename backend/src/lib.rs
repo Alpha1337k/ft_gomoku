@@ -6,6 +6,7 @@ pub mod board;
 pub mod position;
 pub mod piece;
 pub mod heuristic;
+pub mod heuristic_v2;
 pub mod move_calculator;
 
 #[derive(Deserialize)]

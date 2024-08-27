@@ -120,14 +120,24 @@ pub struct Heuristic<'a> {
 
 impl Heuristic<'_> {
 	pub fn from_game_state(state: &GameState) -> Heuristic {
-		Heuristic {
+		let mut h = Heuristic {
 			lines_idx: 1,
 			board: &state.board,
 			captures: &state.captures,
 			lines: HashMap::with_capacity(1),
 			line_pos: HashMap::new(),
 			score: None,
+		};
+
+		for pos in h.board.into_iter() {
+			if h.board[&pos].is_piece() {
+				for (i, direction) in DIRECTIONS.iter().enumerate() {
+					h.evaluate_position(pos, direction, i);
+				}
+			}
 		}
+
+		h
 	}
 
 	pub fn from_new_state<'a>(&'a self, state: &'a GameState) -> Heuristic {
@@ -352,11 +362,9 @@ impl Heuristic<'_> {
 			if self.board[&pos].is_piece() {
 				for (i, direction) in DIRECTIONS.iter().enumerate() {
 					if self.get_line(&pos, i).is_some() {
-						// println!("CACHED");
 						continue;
 					}
-					// println!("NEW");
-					self.evaluate_position(pos, direction, i);
+					// self.evaluate_position(pos, direction, i);
 				}
 			}
 		}
@@ -507,6 +515,24 @@ impl Heuristic<'_> {
 		return Ok(result);
 	}
 
+	fn sort_moves(mut arr: Vec<(Position, EvaluationScore)>, player: Piece) -> Vec<(Position, EvaluationScore)> {
+		arr.sort_by(|a, b| {
+			if a.1.capture_count > b.1.capture_count {
+				return Ordering::Less;
+			} else if a.1.capture_count < b.1.capture_count {
+				return Ordering::Greater;
+			}
+
+			if player == Piece::Max {
+				return b.1.score.total_cmp(&a.1.score);
+			} else {
+				return a.1.score.total_cmp(&b.1.score);
+			}
+		});
+
+		arr
+	}
+
 	pub fn get_moves(&self, player: Piece) -> Vec<(Position, EvaluationScore)> {
 		let mut moves = HashMap::<Position, EvaluationScore>::with_capacity(50);
 
@@ -523,6 +549,10 @@ impl Heuristic<'_> {
 						check_pos.relocate(x, y).is_err() ||
 						self.board[&check_pos].is_piece()
 					{
+						continue;
+					}
+
+					if moves.contains_key(&check_pos) {
 						continue;
 					}
 
@@ -543,25 +573,12 @@ impl Heuristic<'_> {
 			}
 		}
 
-		let mut arr: Vec<(Position, EvaluationScore)> = moves.into_iter().collect();
+		let arr: Vec<(Position, EvaluationScore)> = moves.into_iter().collect();
 
-		arr.sort_by(|a, b| {
-			if a.1.capture_count > b.1.capture_count {
-				return Ordering::Less;
-			} else if a.1.capture_count < b.1.capture_count {
-				return Ordering::Greater;
-			}
-
-			if player == Piece::Max {
-				return b.1.score.total_cmp(&a.1.score);
-			} else {
-				return a.1.score.total_cmp(&b.1.score);
-			}
-		});
 
 		// for m in &arr {
 		// 	println!("L: {} {:#010b}", m.0, m.1.1);
 		// }
-		return arr;
+		return Self::sort_moves(arr, player);
 	}
 }
