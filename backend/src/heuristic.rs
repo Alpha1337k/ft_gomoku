@@ -376,8 +376,6 @@ impl Heuristic<'_> {
 			Self::calculate_captures(&self.captures[Piece::Max as usize]), 
 			Self::calculate_captures(&self.captures[Piece::Min as usize]), 	
 		];
-	
-		self.evaluate_positions();
 
 		for (_idx, line) in &self.lines {
 			if line.player == Piece::Max {
@@ -547,12 +545,9 @@ impl Heuristic<'_> {
 
 					if (x == 0 && y == 0) || 
 						check_pos.relocate(x, y).is_err() ||
-						self.board[&check_pos].is_piece()
+						self.board[&check_pos].is_piece() ||
+						moves.contains_key(&check_pos)
 					{
-						continue;
-					}
-
-					if moves.contains_key(&check_pos) {
 						continue;
 					}
 

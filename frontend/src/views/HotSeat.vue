@@ -63,7 +63,7 @@ async function loadHint() {
 
 	const calculationResponse = await gameState.ws.sendMessage<CalculationResponse>("calculate", {
 		board: gameBoard.value,
-		depth: 5,
+		depth: 6,
 		captures: captures.value,
 		player: currentPlayer.value,
 	});
@@ -85,14 +85,14 @@ async function loadInvalidMoves() {
 	invalidMoves.value = moves.map((x) => x.x + x.y * 19);
 }
 
-async function handleMoveSet(pos: number) {
+async function handleMoveSet(data: {position: number, player: Piece}) {
 	hint.value = undefined;
 
 	const newState = await gameState.ws.sendMessage<HotseatResponse>("hotseat_move", {
 		board: gameBoard.value,
 		in_move: {
-			x: pos % 19,
-			y: Math.floor(pos / 19),
+			x: data.position % 19,
+			y: Math.floor(data.position / 19),
 		},
 		player: currentPlayer.value,
 		captures: captures.value,
@@ -100,11 +100,11 @@ async function handleMoveSet(pos: number) {
 
 	if (currentPlayer.value == Piece.Max) {
 		moves.value.push({
-			"0": pos,
+			"0": data.position,
 		});
 		currentPlayer.value = Piece.Min;
 	} else {
-		moves.value[moves.value.length - 1][1] = pos;
+		moves.value[moves.value.length - 1][1] = data.position;
 
 		currentPlayer.value = Piece.Max;
 	}

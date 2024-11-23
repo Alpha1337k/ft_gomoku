@@ -21,7 +21,7 @@ fn bench_calc() {
 		is_hint: None,
 		depth: 5,
 		captures: [0,0],
-		depth_entries: vec![0; 6],
+		depth_entries: vec![0; 7],
 		player: Piece::Max
 	});
 

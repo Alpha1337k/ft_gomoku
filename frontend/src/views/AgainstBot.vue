@@ -157,7 +157,7 @@ async function loadHint() {
 
 	const calculationResponse = await gameState.ws.sendMessage<CalculationResponse>("calculate", {
 		board: gameBoard.value,
-		depth: 5,
+		depth: 6,
 		captures: captures.value,
 		player: player.value,
 		is_hint: true,
@@ -200,7 +200,7 @@ async function handleMoveSet(data?: { position: number; player?: number }) {
 					y: Math.floor(data.position / 19),
 				}
 			: undefined,
-		depth: 5,
+		depth: 6,
 		player: player.value == Piece.Max ? Piece.Max : Piece.Min,
 		captures: captures.value,
 	});
