@@ -215,14 +215,24 @@ impl Heuristic<'_> {
 
 
 	pub fn from_board(board: &Board) -> Heuristic {
-		Heuristic {
+		let mut h = Heuristic {
 			lines_idx: 1,
 			board: &board,
 			captures: &[0, 0],
 			lines: HashMap::with_capacity(1),
 			line_pos: HashMap::new(),
 			score: None,
+		};
+
+		for pos in h.board.into_iter() {
+			if h.board[&pos].is_piece() {
+				for (i, direction) in DIRECTIONS.iter().enumerate() {
+					h.evaluate_position(pos, direction, i);
+				}
+			}
 		}
+
+		h
 	}
 	
 	fn calculate_captures(value: &usize) -> f32 {
@@ -376,6 +386,12 @@ impl Heuristic<'_> {
 			Self::calculate_captures(&self.captures[Piece::Max as usize]), 
 			Self::calculate_captures(&self.captures[Piece::Min as usize]), 	
 		];
+
+		if capture_scores[0].is_infinite() || capture_scores[1].is_infinite() {
+			self.score = Some(capture_scores[0] - capture_scores[1]);
+
+			return self.score.unwrap();
+		}
 
 		for (_idx, line) in &self.lines {
 			if line.player == Piece::Max {
