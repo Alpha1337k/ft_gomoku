@@ -4,7 +4,7 @@ import { EventEmitter } from "events";
 
 interface MessageBody {
 	subject: string;
-	requestId: string | null;
+	request_id: string | null;
 	data: unknown;
 }
 
@@ -44,7 +44,7 @@ export class WebSocketAPI {
 	handleMessage(ev: MessageEvent<any>) {
 		const data: MessageBody = JSON.parse(ev.data);
 
-		const subject = `${data.subject}${data.requestId ? ":" + data.requestId : ""}`;
+		const subject = `${data.subject}${data.request_id ? ":" + data.request_id : ""}`;
 
 		this.emitter.emit(subject, data.data);
 	}
@@ -55,29 +55,29 @@ export class WebSocketAPI {
 			if (reconnectResult == false) throw new Error("WS is not ready");
 		}
 
-		const requestId = uuid();
+		const request_id = uuid();
 
 		console.log("OUT", {
 			subject,
-			requestId,
+			request_id,
 			data: message,
 		});
 
 		this.ws.send(
 			JSON.stringify({
 				subject,
-				requestId,
+				request_id,
 				data: message,
 			}),
 		);
 
 		return await new Promise((res, rej) => {
 			const timeout = setTimeout(() => {
-				this.emitter.removeAllListeners(`${subject}:${requestId}`);
+				this.emitter.removeAllListeners(`${subject}:${request_id}`);
 				rej(new Error("Server did not respond in time."));
 			}, 120_000);
 
-			const listener = this.emitter.once(`${subject}:${requestId}`, (e) => {
+			const listener = this.emitter.once(`${subject}:${request_id}`, (e) => {
 				console.log("IN", e);
 				clearTimeout(timeout);
 				res(e);

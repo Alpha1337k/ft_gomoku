@@ -53,6 +53,10 @@
 						<div>
 							<p>Board d0 evaluation: {{ editSettings.score?.toFixed(4) ?? "?" }}</p>
 						</div>
+						<div class="space-y-1">
+							<p>Blue captures: <input class="bg-slate-900 rounded text-center pl-3" type="number" min="0" max="5" v-model="captures[0]"> </p>
+							<p>Red captures : <input class="bg-slate-900 rounded text-center pl-3" type="number" min="0" max="5" v-model="captures[1]"></p>
+						</div>
 						<div class="flex justify-between">
 							<p>View prio for blue?</p>
 							<input type="checkbox" v-model="editSettings.is_maximizing" @change="submitEdit()" />
@@ -159,7 +163,7 @@ async function loadHint() {
 		board: gameBoard.value,
 		depth: 6,
 		captures: captures.value,
-		player: player.value,
+		player: isEditMode.value ? (editSettings.value.is_maximizing ? 0 : 1) : player.value,
 		is_hint: true,
 	});
 

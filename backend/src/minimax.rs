@@ -76,7 +76,7 @@ impl GomokuSolver {
 		return solver;
 	}
 
-	fn minimax(&mut self, depth: usize, old_heuristic: &Heuristic, state: &GameState, mut alpha: f32, mut beta: f32) -> Move
+	fn minimax(&mut self, mut depth: usize, old_heuristic: &Heuristic, state: &GameState, mut alpha: f32, mut beta: f32) -> Move
 	{
 		let mut heuristic = old_heuristic.from_new_state(&state);
 		let mut found_move = false;
@@ -97,17 +97,26 @@ impl GomokuSolver {
 		};
 
 		if depth == 0 || heuristical_score.is_infinite() {
-			return Move {
-				child: None,
-				cutoff_at: 0,
-				score: heuristical_score,
-				depth_score: heuristical_score,
-				depth_hit: depth,
-				capture_map: 0,
-				captures: heuristic.captures.clone(),
-				order_idx: 0,
-				position: Position::new(0, 0)
-			};
+			if state.captures[state.player as usize] == 4 && (
+				(state.player.is_min() && heuristical_score.is_sign_positive()) ||
+				(state.player.is_max() && heuristical_score.is_sign_negative())
+			)
+			{
+				depth = 1;
+			}
+			else {
+				return Move {
+					child: None,
+					cutoff_at: 0,
+					score: heuristical_score,
+					depth_score: heuristical_score,
+					depth_hit: depth,
+					capture_map: 0,
+					captures: heuristic.captures.clone(),
+					order_idx: 0,
+					position: Position::new(0, 0)
+				};
+			}
 		}
 
 		let mut possible_moves = heuristic.get_moves(state.player);
