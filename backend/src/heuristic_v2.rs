@@ -14,12 +14,6 @@ pub struct Line {
 	pub player: Piece,
 }
 
-struct LineStore {
-	pub lines: [Vec<Line>; 4],
-}
-
-
-
 #[derive(Clone)]
 pub struct HeuristicNew<'a> {
 	pub board: &'a Board,

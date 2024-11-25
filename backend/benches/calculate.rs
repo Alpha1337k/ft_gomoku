@@ -25,7 +25,7 @@ fn bench_calc() {
 		player: Piece::Max
 	});
 
-	solver.solve();
+	let _ = solver.solve();
 }
 
 library_benchmark_group!(

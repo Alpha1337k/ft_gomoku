@@ -367,19 +367,6 @@ impl Heuristic<'_> {
 		return (scores[0].end, scores[1].end, Some(overwritten));
 	}
 
-	fn evaluate_positions(&mut self) {
-		for pos in self.board.into_iter() {
-			if self.board[&pos].is_piece() {
-				for (i, direction) in DIRECTIONS.iter().enumerate() {
-					if self.get_line(&pos, i).is_some() {
-						continue;
-					}
-					// self.evaluate_position(pos, direction, i);
-				}
-			}
-		}
-	}
-
 	pub fn get_heuristic(&mut self) -> f32 {
 		let mut scores = [0.0, 0.0];
 		let capture_scores = [

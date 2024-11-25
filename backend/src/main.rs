@@ -14,7 +14,7 @@ use backend::{board::Board, heuristic::Heuristic, minimax::GomokuSolver, piece::
 pub struct WSMessage
 {
 	subject: String,
-	requestId: Option<String>,
+	request_id: Option<String>,
 	data: serde_json::Value
 }
 
@@ -67,7 +67,7 @@ struct BoardUpdateResponse<'a>
 struct EvaluationResponse
 {
 	moves: Vec<(Position, (f32, u8))>,
-	boardScore: f32,
+	board_score: f32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -128,7 +128,7 @@ fn handle_pos_moves(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage{
-			requestId: request_id,
+			request_id,
 			subject: "inv_moves".to_string(),
 			data: serde_json::to_value(&moves).unwrap()
 		}).unwrap()
@@ -154,7 +154,7 @@ fn handle_hotseat_move(sender: &mut Writer<TcpStream>, request_id: Option<String
 
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage {
-			requestId: request_id,
+			request_id,
 			subject: "hotseat_move".to_string(),
 			data: serde_json::to_value(&HotseatResponse {
 				board: board,
@@ -172,7 +172,7 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage{
-			requestId: None,
+			request_id: None,
 			subject: "boardUpdate".to_string(),
 			data: serde_json::to_value(&BoardUpdateResponse {
 				board: &solver.board,
@@ -198,7 +198,7 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage{
-			requestId: None,
+			request_id: None,
 			subject: "boardUpdate".to_string(),
 			data: serde_json::to_value(&BoardUpdateResponse {
 				board: &new_board,
@@ -209,7 +209,7 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage{
-			requestId: request_id,
+			request_id,
 			subject: "calculate".to_string(),
 			data: serde_json::to_value(CalculationResponse{
 				score: resolve_infinity(result.score),
@@ -238,10 +238,10 @@ fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: Option<String>, d
 
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage{
-			requestId: request_id,
+			request_id,
 			subject: "evaluate".to_string(),
 			data: serde_json::to_value(EvaluationResponse{
-				boardScore: resolve_infinity(board_score),
+				board_score: resolve_infinity(board_score),
 				moves: moves.iter().map(|f| (f.0, (f.1.score, f.1.capture_map))).collect()
 			}).unwrap()
 		}).unwrap()
@@ -285,10 +285,10 @@ fn main() {
 						let message: WSMessage = serde_json::from_str(&text).unwrap();
 
 						match message.subject.as_str() {
-							"calculate" => handle_calculate(&mut sender, message.requestId, message.data),
-							"inv_moves" => handle_pos_moves(&mut sender, message.requestId, message.data),
-							"hotseat_move" => handle_hotseat_move(&mut sender, message.requestId, message.data),
-							"evaluate" => handle_evaluate(&mut sender, message.requestId, message.data),
+							"calculate" => handle_calculate(&mut sender, message.request_id, message.data),
+							"inv_moves" => handle_pos_moves(&mut sender, message.request_id, message.data),
+							"hotseat_move" => handle_hotseat_move(&mut sender, message.request_id, message.data),
+							"evaluate" => handle_evaluate(&mut sender, message.request_id, message.data),
 							_ => println!("ft_gomoku: error: command not found: {}", message.subject)
 						}
 					}
