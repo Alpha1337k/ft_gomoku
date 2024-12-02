@@ -34,7 +34,7 @@
 				<img v-else src="/robot1.png" class="h-10 rounded-full" />
 			</PlayerBanner>
 		</div>
-		<SidePanel :moves="moves" :score="score">
+		<SidePanel :moves="moves" :score="score" :mate_in="mate_in">
 			<template #top>
 				<FutureMoves :moves="futureMoves" />
 			</template>
@@ -114,6 +114,7 @@ import FutureMoves from "@/components/FutureMoves.vue";
 
 const gameBoard = ref<Board>({});
 const score = ref(0);
+const mate_in = ref<number>()
 const player = ref<Piece>(Piece.Max);
 const moves = ref<Move[]>([]);
 const futureMoves = ref<FutureMove[]>([]);
@@ -161,7 +162,7 @@ async function loadHint() {
 
 	const calculationResponse = await gameState.ws.sendMessage<CalculationResponse>("calculate", {
 		board: gameBoard.value,
-		depth: 6,
+		depth: 5,
 		captures: captures.value,
 		player: isEditMode.value ? (editSettings.value.is_maximizing ? 0 : 1) : player.value,
 		is_hint: true,
@@ -204,7 +205,7 @@ async function handleMoveSet(data?: { position: number; player?: number }) {
 					y: Math.floor(data.position / 19),
 				}
 			: undefined,
-		depth: 6,
+		depth: 5,
 		player: player.value == Piece.Max ? Piece.Max : Piece.Min,
 		captures: captures.value,
 	});
@@ -216,6 +217,7 @@ async function handleMoveSet(data?: { position: number; player?: number }) {
 	const aiMove = newState.moves.shift()!;
 
 	score.value = newState.score;
+	mate_in.value = newState.mate_in;
 
 	if (player.value == Piece.Max) {
 		moves.value.push({

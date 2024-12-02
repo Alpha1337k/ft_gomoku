@@ -31,6 +31,7 @@ struct CalculationResponse
 	depth_hits: Vec<usize>,
 	current_score: f32,
 	score: f32,
+	mate_in: Option<i32>
 }
 
 #[derive(Deserialize)]
@@ -89,6 +90,17 @@ fn resolve_infinity(val: f32) -> f32 {
 		}
 	}
 	return val;
+}
+
+fn resolve_mate_depth(score: &f32, moves: &Vec<MoveFlat>) -> Option<i32> {
+	if score.is_finite() {
+		return None;
+	}
+
+	if score.is_sign_positive() {
+		return Some(moves.len() as i32);
+	}
+	return  Some(-(moves.len() as i32));
 }
 
 fn get_moves(res: &Move) -> Vec<MoveFlat> {
@@ -207,6 +219,9 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 		}).unwrap()
 	)).unwrap();
 
+	let moves = get_moves(&result);
+	let mate_in = resolve_mate_depth(&result.score, &moves);
+
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage{
 			request_id,
@@ -215,7 +230,8 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 				score: resolve_infinity(result.score),
 				current_score: current_score,
 				depth_hits: solver.depth_entries,
-				moves: get_moves(&result),
+				moves,
+				mate_in,
 			}).unwrap()
 		}).unwrap()
 	)).unwrap();
@@ -289,7 +305,7 @@ fn main() {
 							"inv_moves" => handle_pos_moves(&mut sender, message.request_id, message.data),
 							"hotseat_move" => handle_hotseat_move(&mut sender, message.request_id, message.data),
 							"evaluate" => handle_evaluate(&mut sender, message.request_id, message.data),
-							_ => println!("ft_gomoku: error: command not found: {}", message.subject)
+							_ => panic!("ft_gomoku: error: command not found: {}", message.subject)
 						}
 					}
 					_ => sender.send_message(&message).unwrap(),

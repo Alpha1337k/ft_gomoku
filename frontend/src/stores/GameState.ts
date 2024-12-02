@@ -24,6 +24,7 @@ export interface GameState {
 	moves: number[][];
 	predictedMoves: FutureMove[];
 	captures: number[];
+	mate_in?: number
 }
 
 export type Move = { 0?: number; 1?: number; responseTime?: number | null; order_idx?: number };
@@ -52,6 +53,7 @@ export interface CalculationResponse {
 	moves: FutureMove[];
 	current_score: number;
 	score: number;
+	mate_in: number;
 }
 
 export const useGameStateStore = defineStore("gameState", () => {
@@ -175,13 +177,8 @@ export const useGameStateStore = defineStore("gameState", () => {
 		newMove[1] = move_push[1];
 		newMove.responseTime = timerEnd - timerStart;
 
-		if (response.score == 1234) {
-			currentState.value.score = Infinity;
-		} else if (response.score == -1234) {
-			currentState.value.score = -Infinity;
-		} else {
-			currentState.value.score = response.score;
-		}
+		currentState.value.score = response.score;
+		currentState.value.mate_in = response.mate_in;
 
 		currentState.value.predictedMoves = response.moves;
 

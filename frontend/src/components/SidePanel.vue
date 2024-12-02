@@ -1,19 +1,11 @@
 <template>
 	<div class="bg-slate-800 w-96 rounded-lg flex flex-col">
 		<div class="bg-slate-900 p-4 rounded-t-lg border-slate-900 border-lg flex justify-between">
-			<div>
-				<h2 v-if="props.moves.length == 0" class="font-semibold">Move to get started</h2>
-				<p v-if="score === undefined"></p>
-				<h2 v-else-if="score < 0" class="bg-red-600 min-w-10 max-w-20 w-fit rounded text-sm px-1 text-slate-300">
-					{{ score.toPrecision(3).substring(0, 4) }}
-				</h2>
-				<h2 v-else-if="score == 0" class="bg-slate-900 min-w-10 max-w-20 w-fit rounded text-sm px-1">
-					{{ score.toPrecision(3).substring(0, 4) }}
-				</h2>
-				<h2 v-else-if="score > 0" class="bg-blue-600 text-white min-w-10 max-w-20 w-fit rounded text-sm px-1">
-					+{{ score.toPrecision(3).substring(0, 4) }}
-				</h2>
-			</div>
+			<HeuristicDisplay
+				:mate_in="mate_in"
+				:score="score"
+				placeholder="Move to get started."
+			/>
 			<div class="flex-1 mx-2 text-sm" v-if="gameState.currentState.predictedMoves[0]">
 				<p :class="getIdxColor(gameState.currentState.predictedMoves[0].order_idx)">
 					{{ gameState.currentState.predictedMoves[0].order_idx }}
@@ -93,10 +85,12 @@
 <script setup lang="ts">
 import { getHumanPosition, useGameStateStore, type Move } from "@/stores/GameState";
 import Slider from "@/components/Slider.vue";
+import HeuristicDisplay from "./HeuristicDisplay.vue";
 
 const props = defineProps<{
 	moves: Move[];
 	score?: number;
+	mate_in?: number;
 }>();
 
 const gameState = useGameStateStore();

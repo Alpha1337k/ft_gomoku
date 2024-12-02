@@ -63,7 +63,7 @@ async function loadHint() {
 
 	const calculationResponse = await gameState.ws.sendMessage<CalculationResponse>("calculate", {
 		board: gameBoard.value,
-		depth: 6,
+		depth: 5,
 		captures: captures.value,
 		player: currentPlayer.value,
 	});
