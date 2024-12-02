@@ -97,7 +97,7 @@ fn resolve_mate_depth(score: &f32, moves: &Vec<MoveFlat>) -> Option<i32> {
 		return None;
 	}
 
-	let len = (moves.len() as i32 - 1).min(0);
+	let len = (moves.len() as i32 - 1).max(0);
 
 	if score.is_sign_positive() {
 		return Some(len);
