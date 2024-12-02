@@ -98,9 +98,9 @@ fn resolve_mate_depth(score: &f32, moves: &Vec<MoveFlat>) -> Option<i32> {
 	}
 
 	if score.is_sign_positive() {
-		return Some(moves.len() as i32);
+		return Some(moves.len() as i32 - 1);
 	}
-	return  Some(-(moves.len() as i32));
+	return Some(-((( moves.len() as i32 ) - 1)));
 }
 
 fn get_moves(res: &Move) -> Vec<MoveFlat> {
@@ -109,6 +109,10 @@ fn get_moves(res: &Move) -> Vec<MoveFlat> {
 	let mut moves = Vec::<MoveFlat>::new();
 
 	loop {
+		if iter.child.is_none() {
+			break;
+		}
+
 		println!("M: {}", iter.position);
 		moves.push(MoveFlat {
 			order_idx: iter.order_idx,

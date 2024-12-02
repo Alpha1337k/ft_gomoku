@@ -155,6 +155,8 @@ function reloadGame() {
 	invalidMoves.value = [];
 	moves.value = [];
 	modalDisplay.value = "";
+	score.value = 0;
+	mate_in.value = undefined;
 }
 
 async function loadHint() {
