@@ -175,7 +175,7 @@ function handleClick(event: PointerEvent, pos: number) {
 		}
 	}
 
-	if (props.boardPositions[pos] != undefined) {
+	if (props.boardPositions[pos] != undefined || props.invalidMoves.find(x => x == pos)) {
 		return;
 	}
 

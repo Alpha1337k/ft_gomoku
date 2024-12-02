@@ -216,7 +216,22 @@ async function handleMoveSet(data?: { position: number; player?: number }) {
 
 	futureMoves.value = newState.moves;
 
+	if (player.value == Piece.Min) {
+		if (newState.current_score == 1234) {
+			modalDisplay.value = "max";
+			return;
+		} else if (newState.current_score == -1234) {
+			modalDisplay.value = "min";
+			return;
+		}		
+	}
+
 	const aiMove = newState.moves.shift()!;
+
+	if (!aiMove) {
+		console.error("No move from AI")
+		return
+	}
 
 	score.value = newState.score;
 	mate_in.value = newState.mate_in;
@@ -238,10 +253,14 @@ async function handleMoveSet(data?: { position: number; player?: number }) {
 
 	await loadInvalidMoves();
 
-	if (newState.current_score == 1234) {
-		modalDisplay.value = "max";
-	} else if (newState.current_score == -1234) {
-		modalDisplay.value = "min";
+	if (player.value == Piece.Max) {
+		if (newState.current_score == 1234) {
+			modalDisplay.value = "max";
+			return;
+		} else if (newState.current_score == -1234) {
+			modalDisplay.value = "min";
+			return;
+		}		
 	}
 }
 
