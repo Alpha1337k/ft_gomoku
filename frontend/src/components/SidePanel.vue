@@ -1,11 +1,7 @@
 <template>
 	<div class="bg-slate-800 w-96 rounded-lg flex flex-col">
 		<div class="bg-slate-900 p-4 rounded-t-lg border-slate-900 border-lg flex justify-between">
-			<HeuristicDisplay
-				:mate_in="mate_in"
-				:score="score"
-				placeholder="Move to get started."
-			/>
+			<HeuristicDisplay :mate_in="mate_in" :score="score" placeholder="Move to get started." />
 			<div class="flex-1 mx-2 text-sm" v-if="gameState.currentState.predictedMoves[0]">
 				<p :class="getIdxColor(gameState.currentState.predictedMoves[0].order_idx)">
 					{{ gameState.currentState.predictedMoves[0].order_idx }}
@@ -41,44 +37,6 @@
 		</div>
 
 		<slot name="bottom"> </slot>
-		<!-- <div class="h-64 bg-slate-900 rounded-b-lg flex flex-col">
-			<div class="flex divide-x divide-slate-500">
-				<button
-					@click="gameState.setMode('play')"
-					:class="{ 'bg-slate-700': !gameState.isEditMode }"
-					class="hover:bg-slate-700 w-full cursor-pointer p-2"
-				>
-					Play
-				</button>
-				<button
-					@click="gameState.setMode('edit')"
-					:class="{ 'bg-slate-700': gameState.isEditMode }"
-					class="hover:bg-slate-700 w-full cursor-pointer p-2"
-				>
-					Edit
-				</button>
-			</div>
-			<div class="p-2 flex-1">
-				<Slider :max="6" :min="1" v-model="gameState.depth"> Depth ({{ gameState.depth }}) </Slider>
-				<div>
-					<p>Board d0 evaluation: {{ gameState.editState?.boardScore?.toFixed(4) ?? "?" }}</p>
-				</div>
-				<div class="flex justify-between">
-					<p>View prio for blue?</p>
-					<input type="checkbox" v-model="gameState.editSettings.is_maximizing" @change="gameState.submitEdit()" />
-				</div>
-			</div>
-			<button
-				@click="
-					gameState.currentState.board = {};
-					gameState.submitEdit();
-				"
-				:class="{ 'bg-slate-700': !gameState.isEditMode }"
-				class="hover:bg-slate-700 w-full bg-slate-700 cursor-pointer p-2"
-			>
-				Reset
-			</button>
-		</div> -->
 	</div>
 </template>
 

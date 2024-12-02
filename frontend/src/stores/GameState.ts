@@ -24,7 +24,7 @@ export interface GameState {
 	moves: number[][];
 	predictedMoves: FutureMove[];
 	captures: number[];
-	mate_in?: number
+	mate_in?: number;
 }
 
 export type Move = { 0?: number; 1?: number; responseTime?: number | null; order_idx?: number };
@@ -136,57 +136,6 @@ export const useGameStateStore = defineStore("gameState", () => {
 		editState.value = response;
 	}
 
-	async function submitMove(move: number) {
-		let response = {} as CalculationResponse;
-
-		const newMove = {
-			0: move,
-			1: undefined,
-			responseTime: undefined,
-		} as any;
-
-		moveHistory.value.push(newMove);
-
-		const move_push = [move];
-
-		const timerStart = performance.now();
-		response = await ws.value.sendMessage<CalculationResponse>("calculate", {
-			depth: depth.value,
-			board: currentState.value.board,
-			in_move: {
-				x: move % 19,
-				y: Math.floor(move / 19),
-			},
-			player: 0,
-			captures: currentState.value.captures,
-		});
-		const timerEnd = performance.now();
-
-		console.log(response);
-		response.moves.pop();
-		const aiMove = response.moves[0]!;
-
-		console.log("ORDER_IDX_FIRST", aiMove.order_idx);
-
-		if (aiMove) {
-			move_push.push(aiMove.position.x + aiMove.position.y * 19);
-			currentState.value.currentTurn = 0;
-		}
-
-		currentState.value.moves.push(move_push);
-		newMove[1] = move_push[1];
-		newMove.responseTime = timerEnd - timerStart;
-
-		currentState.value.score = response.score;
-		currentState.value.mate_in = response.mate_in;
-
-		currentState.value.predictedMoves = response.moves;
-
-		loadInvalidMoves();
-
-		return response;
-	}
-
 	function setMode(mode: "play" | "edit") {
 		if (mode == "edit") {
 			isEditMode.value = true;
@@ -202,7 +151,6 @@ export const useGameStateStore = defineStore("gameState", () => {
 		stateHistory,
 		setMode,
 		invalidMoves,
-		submitMove,
 		isEditMode,
 		depth,
 		submitEdit,

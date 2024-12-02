@@ -22,23 +22,8 @@
 </template>
 
 <script setup lang="ts">
-import GoBoard from "@/components/GoBoard.vue";
-import SidePanel from "@/components/SidePanel.vue";
 import { useGameStateStore } from "./stores/GameState";
-import { computed, ref, watchEffect } from "vue";
 import { ArrowPathIcon, ExclamationTriangleIcon } from "@heroicons/vue/24/outline";
 
 const gameState = useGameStateStore();
-const apiLoading = ref(false);
-
-async function handleNewMove(move: number) {
-	if (apiLoading.value) return;
-	apiLoading.value = true;
-	try {
-		await gameState.submitMove(move);
-	} catch (err) {
-		console.error(err);
-	}
-	apiLoading.value = false;
-}
 </script>

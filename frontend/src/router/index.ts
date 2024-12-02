@@ -18,6 +18,15 @@ const router = createRouter({
 			name: "Hotseat",
 			component: () => import("@/views/HotSeat.vue"),
 		},
+		{
+			// path: "*",
+			path: "/:catchAll(.*)",
+			name: "NotFound",
+			component: () => import("@/views/NotFound.vue"),
+			meta: {
+			  requiresAuth: false
+			}
+		  }
 	],
 });
 

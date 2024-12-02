@@ -35,7 +35,7 @@
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from "vue";
-import { Piece, useGameStateStore, type Board, type EvalState } from "@/stores/GameState";
+import { Piece, type Board, type EvalState } from "@/stores/GameState";
 
 const hoverPos = ref<number>();
 
@@ -96,7 +96,6 @@ onUnmounted(() => {
 function handleRightClick(pos: number) {
 	if (props.isEditMode) {
 		emit("editPosChange", { position: pos, player: undefined });
-		// gameState.submitEdit();
 	}
 }
 
@@ -105,11 +104,6 @@ function resolveScore(v: number): string {
 		return "";
 	}
 
-	if (v == 1234) {
-		return "+Inf";
-	} else if (v == -1234) {
-		return "-Inf";
-	}
 	return v.toPrecision(3).substring(0, 4);
 }
 
@@ -175,7 +169,7 @@ function handleClick(event: PointerEvent, pos: number) {
 		}
 	}
 
-	if (props.boardPositions[pos] != undefined || props.invalidMoves.find(x => x == pos)) {
+	if (props.boardPositions[pos] != undefined || props.invalidMoves.find((x) => x == pos)) {
 		return;
 	}
 

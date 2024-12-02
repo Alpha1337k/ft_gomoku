@@ -54,8 +54,12 @@
 							<p>Board d0 evaluation: {{ editSettings.score?.toFixed(4) ?? "?" }}</p>
 						</div>
 						<div class="space-y-1">
-							<p>Blue captures: <input class="bg-slate-900 rounded text-center pl-3" type="number" min="0" max="5" v-model="captures[0]"> </p>
-							<p>Red captures : <input class="bg-slate-900 rounded text-center pl-3" type="number" min="0" max="5" v-model="captures[1]"></p>
+							<p>
+								Blue captures: <input class="bg-slate-900 rounded text-center pl-3" type="number" min="0" max="5" v-model="captures[0]" />
+							</p>
+							<p>
+								Red captures : <input class="bg-slate-900 rounded text-center pl-3" type="number" min="0" max="5" v-model="captures[1]" />
+							</p>
 						</div>
 						<div class="flex justify-between">
 							<p>View prio for blue?</p>
@@ -114,7 +118,7 @@ import FutureMoves from "@/components/FutureMoves.vue";
 
 const gameBoard = ref<Board>({});
 const score = ref(0);
-const mate_in = ref<number>()
+const mate_in = ref<number>();
 const player = ref<Piece>(Piece.Max);
 const moves = ref<Move[]>([]);
 const futureMoves = ref<FutureMove[]>([]);
@@ -223,14 +227,14 @@ async function handleMoveSet(data?: { position: number; player?: number }) {
 		} else if (newState.current_score == -1234) {
 			modalDisplay.value = "min";
 			return;
-		}		
+		}
 	}
 
 	const aiMove = newState.moves.shift()!;
 
 	if (!aiMove) {
-		console.error("No move from AI")
-		return
+		console.error("No move from AI");
+		return;
 	}
 
 	score.value = newState.score;
@@ -260,7 +264,7 @@ async function handleMoveSet(data?: { position: number; player?: number }) {
 		} else if (newState.current_score == -1234) {
 			modalDisplay.value = "min";
 			return;
-		}		
+		}
 	}
 }
 

@@ -85,7 +85,7 @@ async function loadInvalidMoves() {
 	invalidMoves.value = moves.map((x) => x.x + x.y * 19);
 }
 
-async function handleMoveSet(data: {position: number, player: Piece}) {
+async function handleMoveSet(data: { position: number; player: Piece }) {
 	hint.value = undefined;
 
 	const newState = await gameState.ws.sendMessage<HotseatResponse>("hotseat_move", {
