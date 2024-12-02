@@ -214,11 +214,12 @@ impl Heuristic<'_> {
 	}
 
 
-	pub fn from_board(board: &Board) -> Heuristic {
+	pub fn from_board<'a>(board: &'a Board, captures: &'a [usize; 2]) -> Heuristic<'a> {
+
 		let mut h = Heuristic {
 			lines_idx: 1,
 			board: &board,
-			captures: &[0, 0],
+			captures: &captures,
 			lines: HashMap::with_capacity(1),
 			line_pos: HashMap::new(),
 			score: None,

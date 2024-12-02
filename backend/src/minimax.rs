@@ -97,7 +97,7 @@ impl GomokuSolver {
 		};
 
 		if depth == 0 || heuristical_score.is_infinite() {
-			if state.captures[state.player as usize] == 4 && (
+			if depth != 0 && state.captures[state.player as usize] == 4 && (
 				(state.player.is_min() && heuristical_score.is_sign_positive()) ||
 				(state.player.is_max() && heuristical_score.is_sign_negative())
 			)
