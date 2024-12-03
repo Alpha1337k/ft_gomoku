@@ -12,9 +12,11 @@ serde_json = {version = "1.0.111"}
 serde = { version = "1.0.195", features = ["derive"] }
 websocket = "0.27.0"
 serde_repr = "0.1.18"
+anyhow = "1.0.93"
+rustc-hash = "2.1.0"
 
 [dev-dependencies]
-iai-callgrind = "0.13.0"
+iai-callgrind = "0.14.0"
 
 [[bench]]
 name = "calculate"
