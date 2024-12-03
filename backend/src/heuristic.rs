@@ -1,4 +1,6 @@
-use std::{cmp::Ordering, collections::{HashMap, HashSet}, f32::INFINITY};
+use std::{cmp::Ordering, f32::INFINITY, hash::BuildHasher};
+
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{board::Board, minimax::GameState, piece::{Piece, PieceWrap}, position::Position};
 
@@ -77,7 +79,6 @@ pub struct Line {
 	pub score: f32,
 	pub block_pos: u8,
 	pub player: Piece,
-	pub disabled: bool,
 }
 
 impl Line {
@@ -91,7 +92,6 @@ impl Line {
 			direction: direction,
 			length: length,
 			score: Self::calculate(blocks, length, player),
-			disabled: false
 		}
 	}
 
@@ -112,9 +112,9 @@ impl Line {
 pub struct Heuristic<'a> {
 	pub board: &'a Board,
 	pub captures: &'a [usize; 2],
-	pub lines: HashMap<usize, Line>,
+	pub lines: FxHashMap<usize, Line>,
 	pub lines_idx: usize,
-	pub line_pos: HashMap<Position, [usize; 4]>,
+	pub line_pos: FxHashMap<Position, [usize; 4]>,
 	pub score: Option<f32>
 }
 
@@ -124,8 +124,8 @@ impl Heuristic<'_> {
 			lines_idx: 1,
 			board: &state.board,
 			captures: &state.captures,
-			lines: HashMap::with_capacity(1),
-			line_pos: HashMap::new(),
+			lines: FxHashMap::default(),
+			line_pos: FxHashMap::default(),
 			score: None,
 		};
 
@@ -153,9 +153,9 @@ impl Heuristic<'_> {
 	
 		let diff = Board::get_diff(n.board, &self.board);
 
-		let mut lines_to_delete = HashSet::<usize>::with_capacity(4);
-		
-		// println!("DLEN: {}", diff.len());
+		let mut lines_to_delete = FxHashSet::<usize>::default();
+
+		lines_to_delete.reserve(4);
 
 		for pos in diff {
 			for (i, direction) in DIRECTIONS.iter().enumerate() {
@@ -169,7 +169,7 @@ impl Heuristic<'_> {
 
 				if cur_poses[0].relocate(direction[0][0], direction[0][1]).is_ok() {
 					if let Some(l) = n.get_line_mut(&cur_poses[0], i) {
-						l.disabled = true;
+						lines_to_delete.insert(l.id);
 					}
 				} else {
 					needs_line_one_eval = false;
@@ -177,7 +177,7 @@ impl Heuristic<'_> {
 				
 				if cur_poses[1].relocate(direction[1][0], direction[1][1]).is_ok() {
 					if let Some(l) = n.get_line_mut(&cur_poses[1], i) {
-						l.disabled = true;
+						lines_to_delete.insert(l.id);
 					}
 				} else {
 					needs_line_two_eval = false;
@@ -204,11 +204,9 @@ impl Heuristic<'_> {
 			}
 		}
 
-		n.lines.retain(|_key, val| val.disabled == false && lines_to_delete.contains(&val.id) == false);
-
-		// for line in &n.lines {
-		// 	println!("{:?}", line);
-		// }
+		for line in lines_to_delete {
+			n.lines.remove(&line);
+		}
 
 		return n;
 	}
@@ -220,8 +218,8 @@ impl Heuristic<'_> {
 			lines_idx: 1,
 			board: &board,
 			captures: &captures,
-			lines: HashMap::with_capacity(1),
-			line_pos: HashMap::new(),
+			lines: FxHashMap::default(),
+			line_pos: FxHashMap::default(),
 			score: None,
 		};
 
@@ -298,14 +296,14 @@ impl Heuristic<'_> {
 		}
 	}
 
-	fn populate_line_pos(&mut self, start: &Position, end: &Position, direction: [i32; 2], direction_idx: usize, reference_idx: usize) -> HashSet<usize>
+	fn populate_line_pos(&mut self, start: &Position, end: &Position, direction: [i32; 2], direction_idx: usize, reference_idx: usize) -> FxHashSet<usize>
 	{
 		let mut pos = start.clone();
-		let mut overwritten_lines = HashSet::with_capacity(2);
+		let mut overwritten_lines = FxHashSet::default();
+		
+		overwritten_lines.reserve(4);
 
 		loop {
-			// println!("POS: {} {}", pos, end);
-			
 			let p;
 			
 			if self.line_pos.contains_key(&pos) {
@@ -315,8 +313,6 @@ impl Heuristic<'_> {
 
 				p = self.line_pos.get_mut(&pos).unwrap();
 			}
-
-			// println!("B4: {} {} {}", pos, p[direction_idx], reference_idx);
 
 			if p[direction_idx] != 0 {
 				overwritten_lines.insert(p[direction_idx]);
@@ -332,7 +328,7 @@ impl Heuristic<'_> {
 		return overwritten_lines;
 	}
 
-	fn evaluate_position(&mut self, pos: Position, direction: &[[i32; 2]; 2], direction_idx: usize) -> (Position, Position, Option<HashSet<usize>>) {
+	fn evaluate_position(&mut self, pos: Position, direction: &[[i32; 2]; 2], direction_idx: usize) -> (Position, Position, Option<FxHashSet<usize>>) {
 		let scores = [
 			self.get_line_length(direction[0], pos, self.board[&pos]),
 			self.get_line_length(direction[1], pos, self.board[&pos])
@@ -536,7 +532,9 @@ impl Heuristic<'_> {
 	}
 
 	pub fn get_moves(&self, player: Piece) -> Vec<(Position, EvaluationScore)> {
-		let mut moves = HashMap::<Position, EvaluationScore>::with_capacity(50);
+		let mut moves = FxHashMap::<Position, EvaluationScore>::default();
+
+		moves.reserve(50);
 
 		for pos in self.board.into_iter() {
 			if self.board[&pos].is_empty() {

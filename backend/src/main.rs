@@ -7,6 +7,7 @@ use serde_json::{Value};
 use websocket::sync::{Server, Writer};
 use websocket::OwnedMessage;
 use serde::{Deserialize, Serialize};
+use anyhow::Result;
 
 use backend::{board::Board, heuristic::Heuristic, minimax::GomokuSolver, piece::Piece};
 
@@ -133,8 +134,8 @@ fn get_moves(res: &Move) -> Vec<MoveFlat> {
 	return moves;
 }
 
-fn handle_pos_moves(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) {
-	let request: PosMoveRequest = serde_json::from_value(data).unwrap();
+fn handle_pos_moves(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) -> Result<()> {
+	let request: PosMoveRequest = serde_json::from_value(data)?;
 
 	let board = Board::from_map(&request.board);
 
@@ -148,13 +149,15 @@ fn handle_pos_moves(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 		serde_json::to_string(&WSMessage{
 			request_id,
 			subject: "inv_moves".to_string(),
-			data: serde_json::to_value(&moves).unwrap()
-		}).unwrap()
-	)).unwrap();
+			data: serde_json::to_value(&moves)?
+		})?
+	))?;
+
+	Result::Ok(())
 }
 
-fn handle_hotseat_move(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) {
-	let request: HotseatRequest = serde_json::from_value(data).unwrap();
+fn handle_hotseat_move(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) -> Result<()> {
+	let request: HotseatRequest = serde_json::from_value(data)?;
 
 	let mut board = Board::from_map(&request.board);
 
@@ -178,13 +181,15 @@ fn handle_hotseat_move(sender: &mut Writer<TcpStream>, request_id: Option<String
 				board: board,
 				captures: captures,
 				score: resolve_infinity(score)
-			}).unwrap()
-		}).unwrap()
-	)).unwrap()
+			})?
+		})?
+	))?;
+
+	Result::Ok(())
 }
 
-fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) {
-	let request: CalculateRequest = serde_json::from_value(data).unwrap();
+fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) -> Result<()> {
+	let request: CalculateRequest = serde_json::from_value(data)?;
 
 	let mut solver = GomokuSolver::from_request(&request);
 
@@ -195,11 +200,11 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 			data: serde_json::to_value(&BoardUpdateResponse {
 				board: &solver.board,
 				captures: solver.captures
-			}).unwrap()
-		}).unwrap()
-	)).unwrap();
+			})?
+		})?
+	))?;
 
-	let result = solver.solve().unwrap();
+	let result = solver.solve()?;
 
 	let mut new_board = solver.board.clone();
 	
@@ -221,9 +226,9 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 			data: serde_json::to_value(&BoardUpdateResponse {
 				board: &new_board,
 				captures: captures
-			}).unwrap()
-		}).unwrap()
-	)).unwrap();
+			})?
+		})?
+	))?;
 
 	let moves = get_moves(&result);
 	let mate_in = resolve_mate_depth(&result.score, &moves);
@@ -238,13 +243,15 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 				depth_hits: solver.depth_entries,
 				moves,
 				mate_in,
-			}).unwrap()
-		}).unwrap()
-	)).unwrap();
+			})?
+		})?
+	))?;
+
+	return Result::Ok(());
 }
 
-fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) {
-	let request: EvalRequest = serde_json::from_value(data).unwrap();
+fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) -> Result<()> {
+	let request: EvalRequest = serde_json::from_value(data)?;
 	let board = Board::from_map(&request.board);
 
 	let mut heuristic = Heuristic::from_board(&board, &[0, 0]);
@@ -265,9 +272,11 @@ fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: Option<String>, d
 			data: serde_json::to_value(EvaluationResponse{
 				board_score: resolve_infinity(board_score),
 				moves: moves.iter().map(|f| (f.0, (f.1.score, f.1.capture_map))).collect()
-			}).unwrap()
-		}).unwrap()
-	)).unwrap();
+			})?
+		})?
+	))?;
+
+	Result::Ok(())
 }
 
 fn main() {
@@ -312,7 +321,7 @@ fn main() {
 							"hotseat_move" => handle_hotseat_move(&mut sender, message.request_id, message.data),
 							"evaluate" => handle_evaluate(&mut sender, message.request_id, message.data),
 							_ => panic!("ft_gomoku: error: command not found: {}", message.subject)
-						}
+						}.unwrap()
 					}
 					_ => sender.send_message(&message).unwrap(),
 				}

@@ -14,6 +14,10 @@ fn bench_calc() {
 
 	board.set_move(Position::new(10, 10), Piece::Max, None);
 	board.set_move(Position::new(11, 10), Piece::Min, None);
+	board.set_move(Position::new(10, 12), Piece::Max, None);
+	board.set_move(Position::new(14, 5), Piece::Min, None);
+	board.set_move(Position::new(14, 14), Piece::Max, None);
+	board.set_move(Position::new(7, 10), Piece::Min, None);
 
 
 	let mut solver = GomokuSolver::from(GomokuSolver {
