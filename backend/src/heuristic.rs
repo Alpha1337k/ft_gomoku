@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, f32::INFINITY, hash::BuildHasher};
+use std::{cmp::Ordering, f32::INFINITY};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 

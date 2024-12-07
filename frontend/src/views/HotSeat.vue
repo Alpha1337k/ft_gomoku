@@ -39,6 +39,7 @@ import { type Move, Piece, type Board, useGameStateStore, type HotseatResponse, 
 import { UserIcon } from "@heroicons/vue/24/outline";
 import { ref } from "vue";
 import AppButton from "@/components/AppButton.vue";
+import { useToast } from "vue-toastification";
 
 const gameBoard = ref<Board>({});
 const currentPlayer = ref<Piece>(Piece.Max);
@@ -58,8 +59,12 @@ function reloadGame() {
 	modalDisplay.value = "";
 }
 
+const toast = useToast();
+
 async function loadHint() {
 	hintLoading.value = true;
+
+	const timerStart = performance.now();
 
 	const calculationResponse = await gameState.ws.sendMessage<CalculationResponse>("calculate", {
 		board: gameBoard.value,
@@ -67,6 +72,10 @@ async function loadHint() {
 		captures: captures.value,
 		player: currentPlayer.value,
 	});
+
+	const timerEnd = performance.now();
+
+	toast.info(`Evaluation took ${(timerEnd - timerStart).toFixed(0)}ms.`)
 
 	hintLoading.value = false;
 
