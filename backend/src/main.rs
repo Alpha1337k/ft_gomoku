@@ -169,7 +169,7 @@ fn handle_hotseat_move(sender: &mut Writer<TcpStream>, request_id: Option<String
 		if request.player == Piece::Min {captures[1] + capture_count} else {captures[1]}
 	];
 
-	let mut heuristic = Heuristic::from_board(&board, &[0, 0]);
+	let mut heuristic = Heuristic::from_board(&board, &captures);
 
 	let score = heuristic.get_heuristic();
 
@@ -280,7 +280,7 @@ fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: Option<String>, d
 }
 
 fn main() {
-	let server = Server::bind("localhost:8000").unwrap();
+	let server = Server::bind("0.0.0.0:8000").unwrap();
 
 	for request in server.filter_map(Result::ok) {
 		// Spawn a new thread for each connection.

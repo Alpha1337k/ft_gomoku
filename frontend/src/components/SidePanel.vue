@@ -42,7 +42,6 @@
 
 <script setup lang="ts">
 import { getHumanPosition, useGameStateStore, type Move } from "@/stores/GameState";
-import Slider from "@/components/Slider.vue";
 import HeuristicDisplay from "./HeuristicDisplay.vue";
 
 const props = defineProps<{
