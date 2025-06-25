@@ -139,7 +139,7 @@ fn handle_pos_moves(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 
 	let board = Board::from_map(&request.board).unwrap();
 
-	let mut heuristic = Heuristic::from_board(&board, &[0, 0]);
+	let mut heuristic = Heuristic::new(&board, &[0, 0]);
 
 	heuristic.get_heuristic();
 
@@ -169,7 +169,7 @@ fn handle_hotseat_move(sender: &mut Writer<TcpStream>, request_id: Option<String
 		if request.player == Piece::Min {captures[1] + capture_count} else {captures[1]}
 	];
 
-	let mut heuristic = Heuristic::from_board(&board, &[0, 0]);
+	let mut heuristic = Heuristic::new(&board, &[0, 0]);
 
 	let score = heuristic.get_heuristic();
 
@@ -217,7 +217,7 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 			if request.player.get_opposite() == Piece::Min {solver.captures[1] + capture_count} else {solver.captures[1]}
 	];
 
-	let current_score = resolve_infinity(Heuristic::from_board(&new_board, &captures).get_heuristic());
+	let current_score = resolve_infinity(Heuristic::new(&new_board, &captures).get_heuristic());
 
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage{
@@ -254,7 +254,7 @@ fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: Option<String>, d
 	let request: EvalRequest = serde_json::from_value(data)?;
 	let board = Board::from_map(&request.board)?;
 
-	let mut heuristic = Heuristic::from_board(&board, &[0, 0]);
+	let mut heuristic = Heuristic::new(&board, &[0, 0]);
 
 	let board_score = heuristic.get_heuristic();
 	let mut moves = heuristic.get_moves(request.player);

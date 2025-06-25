@@ -4,7 +4,7 @@
 
 use crate::{constants::DIRECTIONS, heuristic::Heuristic, piece::{Piece, PieceWrap}, position::Position};
 
-impl Heuristic<'_> {
+impl Heuristic {
 	fn validate_free_two_line_requirements(&self, lines: &[usize; 4], direction_idx: usize, player: Piece) -> bool {
 		let line = &self.lines.get_id(&lines[direction_idx]);
 			
@@ -18,7 +18,7 @@ impl Heuristic<'_> {
 	pub fn get_invalid_moves(&self, player: Piece) -> Vec<Position> {
 		let mut positions = Vec::new();
 
-		for pos in self.board {
+		for pos in &self.board {
 			if self.board[&pos].is_empty() && !self.validate_move(pos, player) {
 				positions.push(pos);
 			}

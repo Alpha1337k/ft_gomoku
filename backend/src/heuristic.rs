@@ -26,42 +26,36 @@ fn is_point_on_line(start: Position, end: Position, check: Position) -> bool {
 }
 
 #[derive(Clone)]
-pub struct Heuristic<'a> {
-	pub board: &'a Board,
-	pub captures: &'a [usize; 2],
+pub struct Heuristic {
+	pub board: Board,
+	pub captures: [usize; 2],
 	pub lines: LineStore,
 	pub score: Option<f32>
 }
 
-impl Heuristic<'_> {
-	pub fn from_game_state(state: &GameState) -> Heuristic {
+impl Heuristic {
+	pub fn new(board: &Board, captures: &[usize; 2]) -> Heuristic {
 		let mut h = Heuristic {
-			board: &state.board,
-			captures: &state.captures,
+			board: board.clone(),
+			captures: *captures,
 			lines: LineStore::default(),
 			score: None,
 		};
 
-		for pos in h.board.into_iter() {
-			if h.board[&pos].is_piece() {
-				for (i, direction) in DIRECTIONS.iter().enumerate() {
-					h.evaluate_position(pos, direction, i);
-				}
-			}
-		}
+		h.evaluate();
 
 		h
 	}
 
-	pub fn from_new_state<'a>(&'a self, state: &'a GameState) -> Heuristic {
+	pub fn from_new_state<'a>(&self, state: &GameState) -> Heuristic {
 		let mut n = Heuristic {
-			board: &state.board,
-			captures: &state.captures,
+			board: state.board.clone(),
+			captures: state.captures,
 			lines: self.lines.clone(),
 			score: None,
 		};
 	
-		let diff = Board::get_diff(n.board, self.board);
+		let diff = Board::get_diff(&n.board, &self.board);
 
 		let mut lines_to_delete = FxHashSet::<usize>::default();
 
@@ -119,26 +113,6 @@ impl Heuristic<'_> {
 		}
 
 		n
-	}
-
-
-	pub fn from_board<'a>(board: &'a Board, captures: &'a [usize; 2]) -> Heuristic<'a> {
-		let mut h = Heuristic {
-			board,
-			captures,
-			lines: LineStore::default(),
-			score: None,
-		};
-
-		for pos in h.board.into_iter() {
-			if h.board[&pos].is_piece() {
-				for (i, direction) in DIRECTIONS.iter().enumerate() {
-					h.evaluate_position(pos, direction, i);
-				}
-			}
-		}
-
-		h
 	}
 	
 	fn calculate_captures(value: &usize) -> f32 {
@@ -224,7 +198,7 @@ impl Heuristic<'_> {
 
 		let mut solo_scores = 0.0;
 
-		for pos in self.board {
+		for pos in &self.board {
 			match self.board[&pos] {
 				Piece::Max => solo_scores += Self::get_position_score(pos),
 				Piece::Min => solo_scores -= Self::get_position_score(pos),
@@ -245,6 +219,28 @@ impl Heuristic<'_> {
 		// }
 
 		self.score.unwrap()
+	}
+
+	pub fn evaluate(&mut self) -> &Self {
+		let mut lines_to_delete = FxHashSet::<usize>::default();
+
+		for pos in self.board.into_iter() {
+			if self.board[&pos].is_piece() {
+				for (i, direction) in DIRECTIONS.iter().enumerate() {
+					let result = self.evaluate_position(pos, direction, i);
+
+					if (result.2.is_some()) {
+						lines_to_delete.extend(result.2.unwrap());
+					}
+				}
+			}
+		}
+
+		for line in lines_to_delete {
+			self.lines.remove(&line);
+		}
+
+		self
 	}
 
 	pub fn evaluate_virtual_move(&self, pos: Position, player: Piece) -> Result<EvaluationScore, &str> {
