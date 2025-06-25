@@ -45,8 +45,8 @@ pub fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: String, data
 	let current_score = resolve_infinity(Heuristic::new(&new_board, &captures).get_heuristic());
 
 	send_ws_message(sender, None, "boardUpdate", BoardUpdateResponse {
-		board: &solver.board,
-		captures: solver.captures
+		board: &new_board,
+		captures
 	})?;
 
 	let moves = get_moves(&result);
@@ -56,8 +56,8 @@ pub fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: String, data
 		score: resolve_infinity(result.score),
 		current_score: current_score,
 		depth_hits: solver.depth_entries,
-		moves: get_moves(&result),
-		mate_in: resolve_mate_depth(&result.score, &moves),
+		moves,
+		mate_in,
 	})?;
 
 

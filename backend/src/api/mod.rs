@@ -1,4 +1,4 @@
-use std::{error::Error, net::{SocketAddr, TcpStream}, thread};
+use std::{net::{SocketAddr, TcpStream}, thread};
 use serde::{Deserialize, Serialize};
 use websocket::OwnedMessage;
 use anyhow::{Result};
@@ -97,9 +97,10 @@ pub fn resolve_mate_depth(score: &f32, moves: &Vec<MoveFlat>) -> Option<i32> {
 	let len = (moves.len() as i32 - 1).max(0);
 
 	if score.is_sign_positive() {
-		return Some(len);
+		Some(len)
+	} else {
+		Some(-len)
 	}
-	return Some(-len);
 }
 
 #[derive(Serialize)]
@@ -117,7 +118,7 @@ pub struct WSMessage
 	data: serde_json::Value
 }
 
-#[derive(Error, Clone, Copy, Debug)]
+#[derive(Error, Clone, Debug)]
 enum ServerError {
 	#[error("Invalid protocol provided")]
 	InvalidProtocol,
@@ -213,9 +214,9 @@ impl GomokuClient {
 		}
 	}
 }
-struct GomokuServer
+pub struct GomokuServer
 {
-	port: u16
+	pub port: u16
 }
 
 impl GomokuServer {
