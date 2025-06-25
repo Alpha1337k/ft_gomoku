@@ -20,14 +20,14 @@ fn bench_calc() {
 	board.set_move(Position::new(7, 10), Piece::Min, None);
 
 
-	let mut solver = GomokuSolver::from(GomokuSolver {
-		board: board,
+	let mut solver = GomokuSolver {
+		board,
 		is_hint: None,
 		depth: 5,
 		captures: [0,0],
 		depth_entries: vec![0; 7],
 		player: Piece::Max
-	});
+	};
 
 	let _ = solver.solve();
 }

@@ -48,7 +48,7 @@ impl Heuristic {
 		h
 	}
 
-	pub fn from_new_state<'a>(&self, state: &GameState) -> Heuristic {
+	pub fn from_new_state(&self, state: &GameState) -> Heuristic {
 		let mut n = Heuristic {
 			board: state.board.clone(),
 			captures: state.captures,
@@ -68,7 +68,7 @@ impl Heuristic {
 						lines_to_delete.insert(l.id);
 					}
 
-					if n.board[&pos].is_piece() {
+					if n.board[pos].is_piece() {
 						let recalculation = n.evaluate_position(*pos, direction, i);
 
 						if recalculation.2.is_some() {
@@ -87,7 +87,7 @@ impl Heuristic {
 						lines_to_delete.insert(l.id);
 					}
 
-					if n.board[&pos].is_piece() {
+					if n.board[pos].is_piece() {
 						let recalculation = n.evaluate_position(*pos, direction, i);
 
 						if recalculation.2.is_some() {
@@ -260,15 +260,13 @@ impl Heuristic {
 		if neighbor == player.get_opposite() {
 			blocks |= block_value;
 		} else if neighbor == player {
-			if cursor.clone().relocate(direction[0], direction[1]).is_ok() && self.board[&cursor] == player.get_opposite() {
+			if cursor.clone().relocate(direction[0], direction[1]).is_ok() && self.board[cursor] == player.get_opposite() {
 				blocks |= block_value;
 			}
 			length += 1;
 		}
 
-		// dbg!(delta, blocks, length);
-
-		return (delta, blocks, length)
+		(delta, blocks, length)
 	}
 
 	pub fn evaluate_virtual_move(&self, pos: Position, player: Piece) -> Result<EvaluationScore, &str> {
@@ -277,8 +275,6 @@ impl Heuristic {
 			capture_map: 0u8,
 			capture_count: 0,
 		};
-
-		// println!("LINES: {}", self.lines.len());
 
 		for (i, direction) in DIRECTIONS.iter().enumerate() {
 			// Neighbor cursors.
@@ -337,10 +333,10 @@ impl Heuristic {
 
 	fn sort_moves(mut arr: Vec<(Position, EvaluationScore)>, player: Piece) -> Vec<(Position, EvaluationScore)> {
 		arr.sort_by(|a, b| {
-			if a.1.capture_count > b.1.capture_count {
-				return Ordering::Less;
-			} else if a.1.capture_count < b.1.capture_count {
-				return Ordering::Greater;
+			match a.1.capture_count.cmp(&b.1.capture_count) {
+				Ordering::Greater => return Ordering::Less,
+				Ordering::Less => return Ordering::Greater,
+				Ordering::Equal => {}
 			}
 
 			if player == Piece::Max {

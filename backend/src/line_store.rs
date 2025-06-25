@@ -106,7 +106,7 @@ impl LineStore {
 	}
 
 	pub fn remove(&mut self, idx: &usize) -> Option<Line> {
-		self.lines.remove(&idx)
+		self.lines.remove(idx)
 	}
 
 	pub fn entry(&mut self, pos: Position) -> std::collections::hash_map::Entry<Position, [usize; 4]> {
