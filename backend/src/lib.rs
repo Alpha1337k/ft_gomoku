@@ -8,6 +8,7 @@ pub mod piece;
 pub mod heuristic;
 pub mod validate_move;
 pub mod constants;
+pub mod line;
 
 #[derive(Deserialize)]
 pub struct CalculateRequest {

@@ -1,8 +1,8 @@
-use std::{cmp::Ordering, f32::INFINITY};
+use std::{cmp::Ordering};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{board::Board, constants::{B0_SCORES, B1_SCORES, B2_SCORES, BOARD_DIM, CAPTURE_SCORES, DIRECTIONS}, minimax::GameState, piece::{Piece, PieceWrap}, position::Position};
+use crate::{board::Board, constants::{BOARD_DIM, CAPTURE_SCORES, DIRECTIONS}, line::Line, minimax::GameState, piece::{Piece, PieceWrap}, position::Position};
 
 struct LineResult {
 	end: Position,
@@ -22,48 +22,7 @@ fn get_distance(p1: &Position, p2: &Position) -> i32
 }
 
 fn is_point_on_line(start: Position, end: Position, check: Position) -> bool {
-
 	get_distance(&start, &end) == get_distance(&end, &check) + get_distance(&start, &check)
-}
-
-
-#[derive(Clone, Debug)]
-pub struct Line {
-	pub id: usize,
-	pub start: Position,
-	pub end: Position,
-	pub length: usize,
-	pub direction: u8,
-	pub score: f32,
-	pub block_pos: u8,
-	pub player: Piece,
-}
-
-impl Line {
-	pub fn new(idx: usize, player: Piece, blocks: u8, start: Position, end: Position, direction: u8, length: usize) -> Line {
-		Line {
-			id: idx,
-			start: start,
-			end: end,
-			player: player,
-			block_pos: blocks,
-			direction: direction,
-			length: length,
-			score: Self::calculate(blocks, length, player),
-		}
-	}
-
-	pub fn calculate(blocks: u8, length: usize, player: Piece) -> f32 {
-		let val = match blocks {
-			0 => B0_SCORES[length.min(5)],
-			1 => B1_SCORES[length.min(5)],
-			2 => B1_SCORES[length.min(5)],
-			3 => B2_SCORES[length.min(5)],
-			_ => INFINITY
-		};
-
-		val * if player == Piece::Max {1.0} else {-1.0}
-	}
 }
 
 #[derive(Clone)]
@@ -109,7 +68,7 @@ impl Heuristic<'_> {
 			score: None,
 		};
 	
-		let diff = Board::get_diff(n.board, &self.board);
+		let diff = Board::get_diff(n.board, self.board);
 
 		let mut lines_to_delete = FxHashSet::<usize>::default();
 
@@ -118,8 +77,8 @@ impl Heuristic<'_> {
 		for pos in diff {
 			for (i, direction) in DIRECTIONS.iter().enumerate() {
 				let mut cur_poses = [
-					pos.clone(),
-					pos.clone(),
+					pos,
+					pos,
 				];
 
 				let mut needs_line_one_eval = true;
@@ -148,7 +107,7 @@ impl Heuristic<'_> {
 						lines_to_delete.extend(recalc.2.unwrap());
 					}
 	
-					if needs_line_two_eval == false || is_point_on_line(recalc.0, recalc.1, cur_poses[1]) {
+					if !needs_line_two_eval || is_point_on_line(recalc.0, recalc.1, cur_poses[1]) {
 						continue;
 					}
 				}
@@ -166,7 +125,7 @@ impl Heuristic<'_> {
 			n.lines.remove(&line);
 		}
 
-		return n;
+		n
 	}
 
 
@@ -174,8 +133,8 @@ impl Heuristic<'_> {
 
 		let mut h = Heuristic {
 			lines_idx: 1,
-			board: &board,
-			captures: &captures,
+			board,
+			captures,
 			lines: FxHashMap::default(),
 			line_pos: FxHashMap::default(),
 			score: None,
@@ -198,41 +157,37 @@ impl Heuristic<'_> {
 
 	fn get_line(&self, pos: &Position, direction_idx: usize) -> Option<&Line> {
 		let lines = self.line_pos.get(pos);
-		if lines.is_none() {
-			return None;
-		} 
+
+		lines?;
 		
 		let line = self.lines.get(&lines?[direction_idx]);
 
-		return line;
+		line
 	}
 
 	fn get_line_mut(&mut self, pos: &Position, direction_idx: usize) -> Option<&mut Line> {
-
 		let lines = self.line_pos.get(pos);
-		if lines.is_none() {
-			return None;
-		} 
+
+		lines?;
 		
 		let line = self.lines.get_mut(&lines?[direction_idx]);
 
-		return line;
+		line
 	}
 
 	fn get_position_score(pos: Position) -> f32 {
 		let y = 1f32 - ((9.5f32 - (pos.y as f32)).abs() / 9.5f32);
 		let x = 1f32 - ((9.5f32 - (pos.x % BOARD_DIM) as f32).abs() / 9.5f32);
 
-		return (y + x) / 2f32;
+		(y + x) / 2f32
 	}
 
 	fn get_line_length(&self, direction: [i32; 2], start: Position, player: Piece) -> LineResult
 	{
-		let mut pos = start.clone();
-
+		let mut pos = start;
 		let mut response = LineResult {
 			blocked: true,
-			end: start.clone(),
+			end: start,
 			length: 0
 		};
 
@@ -256,21 +211,19 @@ impl Heuristic<'_> {
 
 	fn populate_line_pos(&mut self, start: &Position, end: &Position, direction: [i32; 2], direction_idx: usize, reference_idx: usize) -> FxHashSet<usize>
 	{
-		let mut pos = start.clone();
+		let mut pos = *start;
 		let mut overwritten_lines = FxHashSet::default();
 		
 		overwritten_lines.reserve(4);
 
-		loop {
-			let p;
-			
-			if self.line_pos.contains_key(&pos) {
-				p = self.line_pos.get_mut(&pos).unwrap();
-			} else {
-				self.line_pos.insert(pos, [0;4]);
+		loop {	
+			let p = if let std::collections::hash_map::Entry::Vacant(e) = self.line_pos.entry(pos) {
+				e.insert([0;4]);
 
-				p = self.line_pos.get_mut(&pos).unwrap();
-			}
+				self.line_pos.get_mut(&pos).unwrap()
+			} else {
+				self.line_pos.get_mut(&pos).unwrap()
+			};
 
 			if p[direction_idx] != 0 {
 				overwritten_lines.insert(p[direction_idx]);
@@ -283,7 +236,7 @@ impl Heuristic<'_> {
 			}
 
 		}
-		return overwritten_lines;
+		overwritten_lines
 	}
 
 	fn evaluate_position(&mut self, pos: Position, direction: &[[i32; 2]; 2], direction_idx: usize) -> (Position, Position, Option<FxHashSet<usize>>) {
@@ -319,7 +272,7 @@ impl Heuristic<'_> {
 			created_line.id
 		);
 
-		return (scores[0].end, scores[1].end, Some(overwritten));
+		(scores[0].end, scores[1].end, Some(overwritten))
 	}
 
 	pub fn get_heuristic(&mut self) -> f32 {
@@ -335,7 +288,7 @@ impl Heuristic<'_> {
 			return self.score.unwrap();
 		}
 
-		for (_idx, line) in &self.lines {
+		for line in self.lines.values() {
 			if line.player == Piece::Max {
 				scores[0] += line.score;
 			} else {
@@ -366,7 +319,7 @@ impl Heuristic<'_> {
 		// 	println!("LN: {} {} L:{} S:{} B:{}", line.1.start, line.1.end, line.1.length, line.1.score, line.1.block_pos);
 		// }
 
-		return self.score.unwrap();
+		self.score.unwrap()
 	}
 
 	pub fn evaluate_virtual_move(&self, pos: Position, player: Piece) -> Result<EvaluationScore, &str> {
@@ -379,8 +332,9 @@ impl Heuristic<'_> {
 		// println!("LINES: {}", self.lines.len());
 
 		for (i, direction) in DIRECTIONS.iter().enumerate() {
-			let mut _nb_0 = pos.clone();
-			let mut _nb_1 = pos.clone();
+			// Neighbor cursors.
+			let mut _nb_0 = pos;
+			let mut _nb_1 = pos;
 
 			let neighbor_lines = [
 				 if _nb_0.relocate(direction[0][0], direction[0][1]).is_ok() {self.get_line(&_nb_0, i)} else {None},
@@ -460,7 +414,7 @@ impl Heuristic<'_> {
 				result.capture_map |= 1u8 << (i * 2);
 				result.capture_count += 1;
 			} else if capture_map[1] {
-				result.capture_map |= 1u8 << (i * 2) + 1;
+				result.capture_map |= 1u8 << ((i * 2) + 1);
 				result.capture_count += 1;
 			}
 
@@ -468,7 +422,7 @@ impl Heuristic<'_> {
 			result.score += new_calc;
 		}
 
-		return Ok(result);
+		Ok(result)
 	}
 
 	fn sort_moves(mut arr: Vec<(Position, EvaluationScore)>, player: Piece) -> Vec<(Position, EvaluationScore)> {
@@ -480,9 +434,9 @@ impl Heuristic<'_> {
 			}
 
 			if player == Piece::Max {
-				return b.1.score.total_cmp(&a.1.score);
+				b.1.score.total_cmp(&a.1.score)
 			} else {
-				return a.1.score.total_cmp(&b.1.score);
+				a.1.score.total_cmp(&b.1.score)
 			}
 		});
 
@@ -501,7 +455,7 @@ impl Heuristic<'_> {
 
 			for y in -1..2 {
 				for x in -1..2 {
-					let mut check_pos = pos.clone();
+					let mut check_pos = pos;
 
 					if (x == 0 && y == 0) || 
 						check_pos.relocate(x, y).is_err() ||
@@ -534,6 +488,6 @@ impl Heuristic<'_> {
 		// for m in &arr {
 		// 	println!("L: {} {:#010b}", m.0, m.1.1);
 		// }
-		return Self::sort_moves(arr, player);
+		Self::sort_moves(arr, player)
 	}
 }
