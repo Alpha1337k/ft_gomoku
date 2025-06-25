@@ -12,7 +12,7 @@ impl Heuristic {
 			return false;
 		}
 
-		line.unwrap().block_pos == 0 && line.unwrap().player == player && line.unwrap().length == 2
+		line.unwrap().block_pos.is_none() && line.unwrap().player == player && line.unwrap().length == 2
 	}
 
 	pub fn get_invalid_moves(&self, player: Piece) -> Vec<Position> {

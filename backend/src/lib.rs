@@ -10,6 +10,7 @@ pub mod validate_move;
 pub mod constants;
 pub mod line;
 pub mod line_store;
+pub mod block_position;
 
 #[derive(Deserialize)]
 pub struct CalculateRequest {

@@ -1,5 +1,5 @@
 use rustc_hash::{FxHashMap, FxHashSet};
-use crate::{constants::DIRECTIONS, line::Line, piece::Piece, position::Position};
+use crate::{block_position::BlockPosition, constants::DIRECTIONS, line::Line, piece::Piece, position::Position};
 
 
 #[derive(Clone, Debug)]
@@ -75,14 +75,14 @@ impl LineStore {
 		overwritten_lines
 	}
 
-	pub fn insert(&mut self, player: Piece, block_count: u8, start: Position, end: Position, direction_idx: usize, length: usize) -> FxHashSet<usize> {
+	pub fn insert(&mut self, player: Piece, block_pos: BlockPosition, start: Position, end: Position, direction_idx: usize, length: usize) -> FxHashSet<usize> {
 		self.lines_idx += 1;
 
 		self.lines.insert(self.lines_idx, 
 			Line::new(
 				self.lines_idx,
 				player,
-				block_count,
+				block_pos,
 				start,
 				end,
 				direction_idx as u8,
