@@ -238,7 +238,7 @@ impl Heuristic {
 		neighbor: Piece, cursor: &Position, direction: [i32; 2]
 	) -> (f32, BlockPosition, usize) {
 		let mut delta = 0.0;
-		let mut blocks = block_value;
+		let mut blocks = BlockPosition::NONE;
 		let mut length = 0;
 
 		let opposite_block = if block_value == BlockPosition::END { BlockPosition::START } else { BlockPosition::END };
@@ -255,7 +255,9 @@ impl Heuristic {
 				length += line.length;
 				delta -= line.score;
 			}
-		} else if neighbor == player.get_opposite() {
+		} 
+		
+		if neighbor == player.get_opposite() {
 			blocks |= block_value;
 		} else if neighbor == player {
 			if cursor.clone().relocate(direction[0], direction[1]).is_ok() && self.board[&cursor] == player.get_opposite() {
@@ -263,6 +265,8 @@ impl Heuristic {
 			}
 			length += 1;
 		}
+
+		// dbg!(delta, blocks, length);
 
 		return (delta, blocks, length)
 	}
@@ -302,21 +306,21 @@ impl Heuristic {
 			let mut length = 1;
 			let mut blocks = BlockPosition::NONE;
 
-			let (d_score, d_blocks, d_length) = self.get_virtual_move_constraints(player, BlockPosition::START, neighbor_lines[0], neighbor_blocks[0], &_nb_0, direction[0]);
+			let (d1_score, d1_blocks, d1_length) = self.get_virtual_move_constraints(player, BlockPosition::START, neighbor_lines[0], neighbor_blocks[0], &_nb_0, direction[0]);
 
-			new_calc += d_score;
-			length += d_length;
-			blocks |= d_blocks;
+			new_calc += d1_score;
+			length += d1_length;
+			blocks |= d1_blocks;
 
-			let (d_score, d_blocks, d_length) = self.get_virtual_move_constraints(player, BlockPosition::END, neighbor_lines[1], neighbor_blocks[1], &_nb_1, direction[1]);
+			let (d2_score, d2_blocks, d2_length) = self.get_virtual_move_constraints(player, BlockPosition::END, neighbor_lines[1], neighbor_blocks[1], &_nb_1, direction[1]);
 
-			new_calc += d_score;
-			length += d_length;
-			blocks |= d_blocks;
+			new_calc += d2_score;
+			length += d2_length;
+			blocks |= d2_blocks;
 
-
+			
 			new_calc += Line::calculate(blocks, length, player);
-		
+					
 			if capture_map[0] {
 				result.capture_map |= 1u8 << (i * 2);
 				result.capture_count += 1;
@@ -380,8 +384,6 @@ impl Heuristic {
 					} else {
 						eval.score -= pos_score;
 					}
-
-					// println!("--- RESULT=MOVE {} Score={} ({})", check_pos, eval.0, eval.1);
 
 					moves.insert(check_pos, eval);
 				}
