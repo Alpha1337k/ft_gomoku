@@ -1,4 +1,4 @@
-use std::{f32::INFINITY, io::Error, usize};
+use std::{error::Error, f32::INFINITY, usize};
 use crate::{board::Board, heuristic::{EvaluationScore, Heuristic}, piece::{Piece, PieceWrap}, position::Position, CalculateRequest};
 
 
@@ -78,10 +78,10 @@ pub struct GomokuSolver
 }
 
 impl GomokuSolver {
-	pub fn from_request(msg: &CalculateRequest) -> GomokuSolver {
+	pub fn from_request(msg: &CalculateRequest) -> Result<GomokuSolver, Box<dyn Error>> {
 
 		let mut solver = GomokuSolver{
-			board: Board::from_map(&msg.board),
+			board: Board::from_map(&msg.board)?,
 			captures: msg.captures,
 			depth_entries: vec![0; msg.depth + 1],
 			depth: msg.depth,
@@ -98,7 +98,7 @@ impl GomokuSolver {
 			];
 		}
 
-		return solver;
+		Ok(solver)
 	}
 
 	fn minimax(&mut self, mut depth: usize, old_heuristic: &Heuristic, state: &GameState, mut alpha: f32, mut beta: f32) -> Move
@@ -200,7 +200,7 @@ impl GomokuSolver {
 		return move_store;
 	}
 
-	pub fn solve<'a>(&mut self) -> Result<Move, Error>
+	pub fn solve<'a>(&mut self) -> Result<Move, Box<dyn Error>>
 	{
 		println!("Starting minimax.. as player {}\n", if self.is_hint.is_some_and(|x| x == true) { self.player } else {self.player.get_opposite() });
 

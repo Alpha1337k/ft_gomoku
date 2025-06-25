@@ -137,7 +137,7 @@ fn get_moves(res: &Move) -> Vec<MoveFlat> {
 fn handle_pos_moves(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) -> Result<()> {
 	let request: PosMoveRequest = serde_json::from_value(data)?;
 
-	let board = Board::from_map(&request.board);
+	let board = Board::from_map(&request.board).unwrap();
 
 	let mut heuristic = Heuristic::from_board(&board, &[0, 0]);
 
@@ -159,7 +159,7 @@ fn handle_pos_moves(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 fn handle_hotseat_move(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) -> Result<()> {
 	let request: HotseatRequest = serde_json::from_value(data)?;
 
-	let mut board = Board::from_map(&request.board);
+	let mut board = Board::from_map(&request.board).unwrap();
 
 	let mut captures = request.captures.clone();
 	let capture_count = board.set_move(request.in_move, request.player, None);
@@ -191,7 +191,7 @@ fn handle_hotseat_move(sender: &mut Writer<TcpStream>, request_id: Option<String
 fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) -> Result<()> {
 	let request: CalculateRequest = serde_json::from_value(data)?;
 
-	let mut solver = GomokuSolver::from_request(&request);
+	let mut solver = GomokuSolver::from_request(&request).unwrap();
 
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage{
@@ -204,7 +204,7 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 		})?
 	))?;
 
-	let result = solver.solve()?;
+	let result = solver.solve().unwrap();
 
 	let mut new_board = solver.board.clone();
 	
@@ -252,7 +252,7 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 
 fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) -> Result<()> {
 	let request: EvalRequest = serde_json::from_value(data)?;
-	let board = Board::from_map(&request.board);
+	let board = Board::from_map(&request.board)?;
 
 	let mut heuristic = Heuristic::from_board(&board, &[0, 0]);
 
