@@ -4,6 +4,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{block_position::BlockPosition, board::Board, constants::{BOARD_DIM, CAPTURE_SCORES, DIRECTIONS}, line::Line, line_store::LineStore, minimax::GameState, piece::{Piece, PieceWrap}, position::Position};
 
+#[derive(Clone, Debug)]
 struct LineResult {
 	end: Position,
 	length: usize,
@@ -149,10 +150,8 @@ impl Heuristic {
 			self.get_line_length(direction[1], pos, self.board[&pos])
 		];
 
-		let block_count: u8 = ((scores[0].blocked as u8) << 1) + scores[1].blocked as u8;
+		let block_count: u8 = ((scores[1].blocked as u8) << 1) | scores[0].blocked as u8;
 		let length = 1 + scores[0].length + scores[1].length;
-
-		// println!("SCORES: {} {} {} {} {}", pos, scores[0].length, scores[1].length, length, block_count);
 
 		if length == 1 {
 			// println!("continuing..");
