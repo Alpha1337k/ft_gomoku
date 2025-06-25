@@ -1,5 +1,5 @@
 use std::{net::TcpStream, thread};
-use backend::minimax::Move;
+use backend::game_move::Move;
 use backend::piece::PieceWrap;
 use backend::position::Position;
 use backend::CalculateRequest;
@@ -10,14 +10,6 @@ use serde::{Deserialize, Serialize};
 use anyhow::Result;
 
 use backend::{board::Board, heuristic::Heuristic, minimax::GomokuSolver, piece::Piece};
-
-#[derive(Serialize, Deserialize)]
-pub struct WSMessage
-{
-	subject: String,
-	request_id: Option<String>,
-	data: serde_json::Value
-}
 
 #[derive(Deserialize)]
 pub struct EvalRequest {
@@ -72,27 +64,6 @@ struct EvaluationResponse
 	board_score: f32,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct MoveFlat {
-	pub score: f32,
-	pub position: Position,
-	pub order_idx: usize,
-	pub cutoff_at: usize,
-}
-
-// json not supporting infinity. Using magic numbers
-fn resolve_infinity(val: f32) -> f32 {
-	if val.is_infinite() {
-		if val.is_sign_negative() {
-			return -1234.00;
-		}
-		else {
-			return 1234.00;
-		}
-	}
-	return val;
-}
-
 fn resolve_mate_depth(score: &f32, moves: &Vec<MoveFlat>) -> Option<i32> {
 	if score.is_finite() {
 		return None;
@@ -124,8 +95,8 @@ fn get_moves(res: &Move) -> Vec<MoveFlat> {
 			cutoff_at: iter.cutoff_at
 		});
 
-		if iter.child.is_some() {
-			iter = iter.child.as_ref().unwrap().as_ref();
+		if let Some(child) = &iter.child.as_ref() {
+			iter = child;
 		} else {
 			break;
 		}
@@ -134,10 +105,10 @@ fn get_moves(res: &Move) -> Vec<MoveFlat> {
 	return moves;
 }
 
-fn handle_pos_moves(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) -> Result<()> {
+fn handle_pos_moves(sender: &mut Writer<TcpStream>, request_id: String, data: Value) -> Result<()> {
 	let request: PosMoveRequest = serde_json::from_value(data)?;
 
-	let board = Board::from_map(&request.board).unwrap();
+	let board = Board::from_map(&request.board)?;
 
 	let mut heuristic = Heuristic::new(&board, &[0, 0]);
 
@@ -147,7 +118,7 @@ fn handle_pos_moves(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage{
-			request_id,
+			request_id: Some(request_id),
 			subject: "inv_moves".to_string(),
 			data: serde_json::to_value(&moves)?
 		})?
@@ -156,10 +127,10 @@ fn handle_pos_moves(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 	Result::Ok(())
 }
 
-fn handle_hotseat_move(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) -> Result<()> {
+fn handle_hotseat_move(sender: &mut Writer<TcpStream>, request_id: String, data: Value) -> Result<()> {
 	let request: HotseatRequest = serde_json::from_value(data)?;
 
-	let mut board = Board::from_map(&request.board).unwrap();
+	let mut board = Board::from_map(&request.board)?;
 
 	let mut captures = request.captures.clone();
 	let capture_count = board.set_move(request.in_move, request.player, None);
@@ -175,7 +146,7 @@ fn handle_hotseat_move(sender: &mut Writer<TcpStream>, request_id: Option<String
 
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage {
-			request_id,
+			request_id: Some(request_id),
 			subject: "hotseat_move".to_string(),
 			data: serde_json::to_value(&HotseatResponse {
 				board: board,
@@ -188,10 +159,10 @@ fn handle_hotseat_move(sender: &mut Writer<TcpStream>, request_id: Option<String
 	Result::Ok(())
 }
 
-fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) -> Result<()> {
+fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: String, data: Value) -> Result<()> {
 	let request: CalculateRequest = serde_json::from_value(data)?;
 
-	let mut solver = GomokuSolver::from_request(&request).unwrap();
+	let mut solver = GomokuSolver::from_request(&request)?;
 
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage{
@@ -204,7 +175,7 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 		})?
 	))?;
 
-	let result = solver.solve().unwrap();
+	let result = solver.solve()?;
 
 	let mut new_board = solver.board.clone();
 	
@@ -235,7 +206,7 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage{
-			request_id,
+			request_id: Some(request_id),
 			subject: "calculate".to_string(),
 			data: serde_json::to_value(CalculationResponse{
 				score: resolve_infinity(result.score),
@@ -250,7 +221,7 @@ fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: Option<String>, 
 	return Result::Ok(());
 }
 
-fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: Option<String>, data: Value) -> Result<()> {
+fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: String, data: Value) -> Result<()> {
 	let request: EvalRequest = serde_json::from_value(data)?;
 	let board = Board::from_map(&request.board)?;
 
@@ -267,7 +238,7 @@ fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: Option<String>, d
 
 	sender.send_message(&OwnedMessage::Text(
 		serde_json::to_string(&WSMessage{
-			request_id,
+			request_id: Some(request_id),
 			subject: "evaluate".to_string(),
 			data: serde_json::to_value(EvaluationResponse{
 				board_score: resolve_infinity(board_score),
@@ -280,7 +251,7 @@ fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: Option<String>, d
 }
 
 fn main() {
-	let server = Server::bind("localhost:8000").unwrap();
+	let server = Server::bind("localhost:8000").expect("Failed to bind server to port 8000");
 
 	for request in server.filter_map(Result::ok) {
 		// Spawn a new thread for each connection.
@@ -314,14 +285,30 @@ fn main() {
 					}
 					OwnedMessage::Text(text) => {
 						let message: WSMessage = serde_json::from_str(&text).unwrap();
+						let request_id = message.request_id.unwrap();
 
-						match message.subject.as_str() {
-							"calculate" => handle_calculate(&mut sender, message.request_id, message.data),
-							"inv_moves" => handle_pos_moves(&mut sender, message.request_id, message.data),
-							"hotseat_move" => handle_hotseat_move(&mut sender, message.request_id, message.data),
-							"evaluate" => handle_evaluate(&mut sender, message.request_id, message.data),
+						let result = match message.subject.as_str() {
+							"calculate" => handle_calculate(&mut sender, request_id.clone(), message.data),
+							"inv_moves" => handle_pos_moves(&mut sender, request_id.clone(), message.data),
+							"hotseat_move" => handle_hotseat_move(&mut sender, request_id.clone(), message.data),
+							"evaluate" => handle_evaluate(&mut sender, request_id.clone(), message.data),
 							_ => panic!("ft_gomoku: error: command not found: {}", message.subject)
-						}.unwrap()
+						};
+
+						if result.is_err() {
+							let error = result.unwrap_err();
+
+							println!("ft_gomoku: error: {}", error);
+
+							sender.send_message(&OwnedMessage::Text(
+								serde_json::to_string(&WSMessage {
+									subject: "error".to_string(),
+									request_id: Some(request_id),
+									data: serde_json::to_value(error.to_string()).unwrap()
+							}).unwrap())).unwrap_or_else(|_| {
+								println!("ft_gomoku: error: failed to send error message to client");
+							});
+						}
 					}
 					_ => sender.send_message(&message).unwrap(),
 				}
