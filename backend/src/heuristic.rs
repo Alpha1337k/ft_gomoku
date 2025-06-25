@@ -2,7 +2,7 @@ use std::{cmp::Ordering};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{board::Board, constants::{BOARD_DIM, CAPTURE_SCORES, DIRECTIONS}, line::Line, minimax::GameState, piece::{Piece, PieceWrap}, position::Position};
+use crate::{board::Board, constants::{BOARD_DIM, CAPTURE_SCORES, DIRECTIONS}, line::Line, line_store::LineStore, minimax::GameState, piece::{Piece, PieceWrap}, position::Position};
 
 struct LineResult {
 	end: Position,
@@ -29,20 +29,16 @@ fn is_point_on_line(start: Position, end: Position, check: Position) -> bool {
 pub struct Heuristic<'a> {
 	pub board: &'a Board,
 	pub captures: &'a [usize; 2],
-	pub lines: FxHashMap<usize, Line>,
-	pub lines_idx: usize,
-	pub line_pos: FxHashMap<Position, [usize; 4]>,
+	pub lines: LineStore,
 	pub score: Option<f32>
 }
 
 impl Heuristic<'_> {
 	pub fn from_game_state(state: &GameState) -> Heuristic {
 		let mut h = Heuristic {
-			lines_idx: 1,
 			board: &state.board,
 			captures: &state.captures,
-			lines: FxHashMap::default(),
-			line_pos: FxHashMap::default(),
+			lines: LineStore::default(),
 			score: None,
 		};
 
@@ -58,13 +54,10 @@ impl Heuristic<'_> {
 	}
 
 	pub fn from_new_state<'a>(&'a self, state: &'a GameState) -> Heuristic {
-
 		let mut n = Heuristic {
-			lines_idx: self.lines_idx,
 			board: &state.board,
 			captures: &state.captures,
 			lines: self.lines.clone(),
-			line_pos: self.line_pos.clone(),
 			score: None,
 		};
 	
@@ -85,7 +78,7 @@ impl Heuristic<'_> {
 				let mut needs_line_two_eval = true;
 
 				if cur_poses[0].relocate(direction[0][0], direction[0][1]).is_ok() {
-					if let Some(l) = n.get_line_mut(&cur_poses[0], i) {
+					if let Some(l) = n.lines.get_mut(&cur_poses[0], i) {
 						lines_to_delete.insert(l.id);
 					}
 				} else {
@@ -93,7 +86,7 @@ impl Heuristic<'_> {
 				}
 				
 				if cur_poses[1].relocate(direction[1][0], direction[1][1]).is_ok() {
-					if let Some(l) = n.get_line_mut(&cur_poses[1], i) {
+					if let Some(l) = n.lines.get_mut(&cur_poses[1], i) {
 						lines_to_delete.insert(l.id);
 					}
 				} else {
@@ -130,13 +123,10 @@ impl Heuristic<'_> {
 
 
 	pub fn from_board<'a>(board: &'a Board, captures: &'a [usize; 2]) -> Heuristic<'a> {
-
 		let mut h = Heuristic {
-			lines_idx: 1,
 			board,
 			captures,
-			lines: FxHashMap::default(),
-			line_pos: FxHashMap::default(),
+			lines: LineStore::default(),
 			score: None,
 		};
 
@@ -153,26 +143,6 @@ impl Heuristic<'_> {
 	
 	fn calculate_captures(value: &usize) -> f32 {
 		CAPTURE_SCORES[(*value).min(5)]
-	}
-
-	fn get_line(&self, pos: &Position, direction_idx: usize) -> Option<&Line> {
-		let lines = self.line_pos.get(pos);
-
-		lines?;
-		
-		let line = self.lines.get(&lines?[direction_idx]);
-
-		line
-	}
-
-	fn get_line_mut(&mut self, pos: &Position, direction_idx: usize) -> Option<&mut Line> {
-		let lines = self.line_pos.get(pos);
-
-		lines?;
-		
-		let line = self.lines.get_mut(&lines?[direction_idx]);
-
-		line
 	}
 
 	fn get_position_score(pos: Position) -> f32 {
@@ -209,36 +179,6 @@ impl Heuristic<'_> {
 		}
 	}
 
-	fn populate_line_pos(&mut self, start: &Position, end: &Position, direction: [i32; 2], direction_idx: usize, reference_idx: usize) -> FxHashSet<usize>
-	{
-		let mut pos = *start;
-		let mut overwritten_lines = FxHashSet::default();
-		
-		overwritten_lines.reserve(4);
-
-		loop {	
-			let p = if let std::collections::hash_map::Entry::Vacant(e) = self.line_pos.entry(pos) {
-				e.insert([0;4]);
-
-				self.line_pos.get_mut(&pos).unwrap()
-			} else {
-				self.line_pos.get_mut(&pos).unwrap()
-			};
-
-			if p[direction_idx] != 0 {
-				overwritten_lines.insert(p[direction_idx]);
-			}
-			
-			p[direction_idx] = reference_idx;
-
-			if pos == *end || pos.relocate(direction[0], direction[1]).is_err() {
-				break;
-			}
-
-		}
-		overwritten_lines
-	}
-
 	fn evaluate_position(&mut self, pos: Position, direction: &[[i32; 2]; 2], direction_idx: usize) -> (Position, Position, Option<FxHashSet<usize>>) {
 		let scores = [
 			self.get_line_length(direction[0], pos, self.board[&pos]),
@@ -255,22 +195,7 @@ impl Heuristic<'_> {
 			return (scores[0].end, scores[1].end, None);
 		}
 
-
-		self.lines_idx += 1;
-
-		self.lines.insert(self.lines_idx, 
-			Line::new(self.lines_idx, self.board[&pos], block_count, scores[0].end, scores[1].end, direction_idx as u8, length)
-		);
-
-		let created_line = self.lines.get(&self.lines_idx).unwrap();
-
-		let overwritten = self.populate_line_pos(
-			&scores[0].end, 
-			&scores[1].end, 
-			direction[1], 
-			direction_idx, 
-			created_line.id
-		);
+		let overwritten = self.lines.insert(self.board[&pos], block_count, scores[0].end, scores[1].end, direction_idx, length);
 
 		(scores[0].end, scores[1].end, Some(overwritten))
 	}
@@ -337,8 +262,8 @@ impl Heuristic<'_> {
 			let mut _nb_1 = pos;
 
 			let neighbor_lines = [
-				 if _nb_0.relocate(direction[0][0], direction[0][1]).is_ok() {self.get_line(&_nb_0, i)} else {None},
-				 if _nb_1.relocate(direction[1][0], direction[1][1]).is_ok() {self.get_line(&_nb_1, i)} else {None},
+				 if _nb_0.relocate(direction[0][0], direction[0][1]).is_ok() {self.lines.get(&_nb_0, i)} else {None},
+				 if _nb_1.relocate(direction[1][0], direction[1][1]).is_ok() {self.lines.get(&_nb_1, i)} else {None},
 			];
 
 			let neighbor_blocks = [

@@ -6,7 +6,7 @@ use crate::{constants::DIRECTIONS, heuristic::Heuristic, piece::{Piece, PieceWra
 
 impl Heuristic<'_> {
 	fn validate_free_two_line_requirements(&self, lines: &[usize; 4], direction_idx: usize, player: Piece) -> bool {
-		let line = &self.lines.get(&lines[direction_idx]);
+		let line = &self.lines.get_id(&lines[direction_idx]);
 			
 		if line.is_none() {
 			return false;
@@ -31,7 +31,7 @@ impl Heuristic<'_> {
 		if pos.relocate(direction[0], direction[1]).is_err() {
 			return -1
 		}
-		if self.line_pos.get(&pos)
+		if self.lines.get_pos(&pos)
 			.is_some_and(|lines| self.validate_free_two_line_requirements(lines, direction_idx, player)) {
 			return 1;
 		}
@@ -44,7 +44,7 @@ impl Heuristic<'_> {
 			return 0
 		}
 
-		if self.line_pos.get(&pos)
+		if self.lines.get_pos(&pos)
 			.is_some_and(|lines| self.validate_free_two_line_requirements(lines, direction_idx, player)) {
 			return 1;
 		}
