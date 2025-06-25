@@ -6,7 +6,7 @@ pub mod board;
 pub mod position;
 pub mod piece;
 pub mod heuristic;
-pub mod move_calculator;
+pub mod validate_move;
 
 #[derive(Deserialize)]
 pub struct CalculateRequest {
