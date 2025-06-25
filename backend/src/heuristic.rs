@@ -2,50 +2,8 @@ use std::{cmp::Ordering, f32::INFINITY};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{board::Board, minimax::GameState, piece::{Piece, PieceWrap}, position::Position};
+use crate::{board::Board, constants::{B0_SCORES, B1_SCORES, B2_SCORES, BOARD_DIM, CAPTURE_SCORES, DIRECTIONS}, minimax::GameState, piece::{Piece, PieceWrap}, position::Position};
 
-const DIRECTIONS: [[[i32; 2]; 2]; 4] = [
-	[[-1, 0], [1, 0]], //x
-	[[0, -1], [0, 1]], //y
-	[[-1, -1], [1, 1]], //tlbr
-	[[-1, 1], [1, -1]], //trbl
-];
-
-const CAPTURE_SCORES: [f32; 6] = [
-	0.0,
-	8.0,
-	16.0,
-	32.0,
-	64.0,
-	INFINITY
-];
-
-const B0_SCORES: [f32; 6] = [
-	1.0,
-	2.0,
-	4.0,
-	16.0,
-	64.0,
-	INFINITY
-];
-
-const B1_SCORES: [f32; 6] = [
-	1.0,
-	2.0,
-	0.0, // can capture
-	8.0,
-	16.0,
-	INFINITY
-];
-
-const B2_SCORES: [f32; 6] = [
-	0.0,
-	0.0,
-	0.0,
-	0.0,
-	0.0,
-	INFINITY
-];
 struct LineResult {
 	end: Position,
 	length: usize,
@@ -263,7 +221,7 @@ impl Heuristic<'_> {
 
 	fn get_position_score(pos: Position) -> f32 {
 		let y = 1f32 - ((9.5f32 - (pos.y as f32)).abs() / 9.5f32);
-		let x = 1f32 - ((9.5f32 - (pos.x % 19) as f32).abs() / 9.5f32);
+		let x = 1f32 - ((9.5f32 - (pos.x % BOARD_DIM) as f32).abs() / 9.5f32);
 
 		return (y + x) / 2f32;
 	}

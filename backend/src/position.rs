@@ -2,6 +2,8 @@ use std::fmt;
 use thiserror::Error;
 use serde::{Deserialize, Serialize};
 
+use crate::constants::BOARD_DIM;
+
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum PositionError {
     #[error("Position exceeds bounds: {value_x}, {value_y}")]
@@ -23,7 +25,7 @@ impl Position {
 	}
 
 	pub fn check_pos(&self) -> Result<&Position, PositionError> {
-		if self.x >= 19 || self.y >= 19 {
+		if self.x >= BOARD_DIM || self.y >= BOARD_DIM {
 			return Err(PositionError::ExceedsBounds { value_x: self.x, value_y: self.y });
 		}
 		Ok(self)
@@ -50,8 +52,8 @@ impl Position {
 
 	pub fn from_u64(pos: usize) -> Position {
 		*Position {
-			x: pos % 19,
-			y: pos.div_euclid(19)
+			x: pos % BOARD_DIM,
+			y: pos.div_euclid(BOARD_DIM)
 		}.check_pos().unwrap()
 	}
 }

@@ -6,7 +6,7 @@ use std::{fmt};
 use serde::Serialize;
 use serde_json::Value;
 use thiserror::Error;
-use crate::{piece::{Piece, PieceWrap}, position::Position};
+use crate::{constants::{BOARD_DIM, BOARD_SIZE, BOARD_WIDTH}, piece::{Piece, PieceWrap}, position::Position};
 
 #[derive(Clone, Serialize)]
 pub struct Board {
@@ -28,13 +28,13 @@ impl Default for Board {
 impl Board {
 	pub fn new() -> Board {
 		Board { 
-			data: vec![Piece::Empty; 19 * 19],
+			data: vec![Piece::Empty; BOARD_SIZE],
 		}
 	}
 
 	pub fn from_map(board_map: &serde_json::Map<String, Value>) -> Result<Board, BoardError> {
 		let mut board =  Board { 
-			data: vec![Piece::Empty; 19 * 19],
+			data: vec![Piece::Empty; BOARD_SIZE],
 		 };
 
 		 for (key, value) in board_map {
@@ -142,7 +142,7 @@ impl Board {
 	}
 
 	pub fn get(&self, x: usize, y: usize) -> &Piece {
-		&self.data[y * 19 + x]
+		&self.data[y * BOARD_WIDTH + x]
 	}
 }
 
@@ -150,13 +150,13 @@ impl std::ops::Index<&Position> for Board {
     type Output = Piece;
 
     fn index(&self, idx: &Position) -> &Piece {
-		&self.data[idx.x + idx.y * 19]
+		&self.data[idx.x + idx.y * BOARD_DIM]
     }
 }
 
 impl std::ops::IndexMut<&Position> for Board {
     fn index_mut(&mut self, idx: &Position) -> &mut Piece {
-		&mut self.data[idx.x + idx.y * 19]
+		&mut self.data[idx.x + idx.y * BOARD_DIM]
     }
 }
 
@@ -193,12 +193,12 @@ impl Iterator for BoardIterator {
 impl fmt::Display for Board {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		write!(f, "  ")?;
-		for i in 0..19 {
+		for i in 0..BOARD_WIDTH {
 			write!(f, "{:3}", i)?;
 		}
-		for i in 0..19*19 {
-			if i % 19 == 0 {
-				write!(f, "\n{}:", ((i as f64 / 19.0).floor() as u8 + 65) as char )?;
+		for i in 0..BOARD_SIZE {
+			if i % BOARD_WIDTH == 0 {
+				write!(f, "\n{}:", ((i / BOARD_WIDTH) as u8 + 65) as char )?;
 			}
 			write!(f, " {} ", self.data[i])?;
 		}

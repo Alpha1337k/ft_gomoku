@@ -2,14 +2,7 @@
 
 
 
-use crate::{heuristic::Heuristic, piece::{Piece, PieceWrap}, position::Position};
-
-const DIRECTIONS: [[[i32; 2]; 2]; 4] = [
-	[[-1, 0], [1, 0]], //x
-	[[0, -1], [0, 1]], //y
-	[[-1, -1], [1, 1]], //tlbr
-	[[-1, 1], [1, -1]], //trbl
-];
+use crate::{constants::DIRECTIONS, heuristic::Heuristic, piece::{Piece, PieceWrap}, position::Position};
 
 impl Heuristic<'_> {
 	fn validate_free_two_line_requirements(&self, lines: &[usize; 4], direction_idx: usize, player: Piece) -> bool {
