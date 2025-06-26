@@ -66,6 +66,24 @@ impl GomokuSolver {
 		Ok(solver)
 	}
 
+	fn get_moves(state: &GameState, heuristic: &Heuristic) -> Vec<(Position, EvaluationScore)> {
+		let mut possible_moves = heuristic.get_moves(state.player);
+
+		if possible_moves.is_empty() && state.board[&Position::new(10, 10)].is_empty() {
+			possible_moves.push((
+				Position::new(10, 10),
+				EvaluationScore {
+					capture_count: 0,
+					capture_map: 0,
+					score: 0.0,
+				},
+			));
+		} else if possible_moves.is_empty() {
+			panic!("No possible starter move found")
+		}
+		possible_moves
+	}
+
 	fn compare_move(
 		node_result: &Move,
 		best_move: &Move,
@@ -104,7 +122,7 @@ impl GomokuSolver {
 		mut alpha: f32,
 		mut beta: f32,
 	) -> Move {
-		let mut heuristic = old_heuristic.from_new_state(state);
+		let mut heuristic = old_heuristic.from_old_state(state);
 		let mut found_move = false;
 
 		self.depth_entries[self.depth - depth] += 1;
@@ -128,20 +146,7 @@ impl GomokuSolver {
 			}
 		}
 
-		let mut possible_moves = heuristic.get_moves(state.player);
-
-		if possible_moves.is_empty() && state.board[&Position::new(10, 10)].is_empty() {
-			possible_moves.push((
-				Position::new(10, 10),
-				EvaluationScore {
-					capture_count: 0,
-					capture_map: 0,
-					score: 0.0,
-				},
-			));
-		} else if possible_moves.is_empty() {
-			panic!("No possible starter move found")
-		}
+		let possible_moves = GomokuSolver::get_moves(state, &heuristic);
 
 		let mut best_move = Move {
 			score: if state.player.is_max() {
@@ -247,23 +252,18 @@ impl GomokuSolver {
 	}
 
 	pub fn solve(&mut self) -> Result<Move, MinMaxError> {
-		println!(
-			"Starting minimax.. as player {}\n",
-			if self.is_hint.is_some_and(|x| x) {
-				self.player
-			} else {
-				self.player.get_opposite()
-			}
-		);
+		let player = if self.is_hint.is_some_and(|x| x) {
+			self.player
+		} else {
+			self.player.get_opposite()
+		};
+
+		println!("Starting minimax.. as player {}\n", player);
 
 		let game_state = GameState {
 			board: self.board.clone(),
 			captures: self.captures,
-			player: if self.is_hint.is_some_and(|x| x) {
-				self.player
-			} else {
-				self.player.get_opposite()
-			},
+			player,
 		};
 
 		let mut heuristic = Heuristic::new(&game_state.board, &game_state.captures);

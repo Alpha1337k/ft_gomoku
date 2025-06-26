@@ -56,7 +56,8 @@ impl Heuristic {
 		h
 	}
 
-	pub fn from_new_state(&self, state: &GameState) -> Heuristic {
+	// Load heuristic from old heuristic, only recalculating the new move. This reduces calculations by a magnitude.
+	pub fn from_old_state(&self, state: &GameState) -> Heuristic {
 		let mut n = Heuristic {
 			board: state.board.clone(),
 			captures: state.captures,
@@ -86,9 +87,8 @@ impl Heuristic {
 						if pos
 							.clone()
 							.relocate(direction[1][0], direction[1][1])
-							.as_ref()
 							.is_ok_and(|pos| {
-								is_point_on_line(recalculation.0, recalculation.1, **pos)
+								is_point_on_line(recalculation.0, recalculation.1, *pos)
 							}) {
 							continue;
 						}
@@ -217,14 +217,8 @@ impl Heuristic {
 			}
 		}
 
-		// println!("{} {} {} {} {}", scores[0], scores[1], solo_scores, capture_scores[0], capture_scores[1]);
-
 		self.score =
 			Some(scores[0] + scores[1] + solo_scores + capture_scores[0] - capture_scores[1]);
-
-		// for line in &self.lines {
-		// 	println!("LN: {} {} L:{} S:{} B:{}", line.1.start, line.1.end, line.1.length, line.1.score, line.1.block_pos);
-		// }
 
 		self.score.unwrap()
 	}
@@ -251,6 +245,7 @@ impl Heuristic {
 		self
 	}
 
+	// Gets result of move without actually setting it.
 	fn get_virtual_move_constraints(
 		&self,
 		player: Piece,
@@ -299,6 +294,7 @@ impl Heuristic {
 		(delta, blocks, length)
 	}
 
+	// Gets result of moves without actually setting them.
 	pub fn evaluate_virtual_move(
 		&self,
 		pos: Position,
@@ -462,9 +458,6 @@ impl Heuristic {
 
 		let arr: Vec<(Position, EvaluationScore)> = moves.into_iter().collect();
 
-		// for m in &arr {
-		// 	println!("L: {} {:#010b}", m.0, m.1.1);
-		// }
 		Self::sort_moves(arr, player)
 	}
 }

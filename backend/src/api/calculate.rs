@@ -63,8 +63,6 @@ pub fn handle_calculate(
 		},
 	];
 
-	let current_score = resolve_infinity(Heuristic::new(&new_board, &captures).get_heuristic());
-
 	send_ws_message(
 		sender,
 		None,
@@ -77,6 +75,7 @@ pub fn handle_calculate(
 
 	let moves = get_moves(&result);
 	let mate_in = resolve_mate_depth(&result.score, &moves);
+	let current_score = resolve_infinity(Heuristic::new(&new_board, &captures).get_heuristic());
 
 	send_ws_message(
 		sender,

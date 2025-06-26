@@ -53,7 +53,7 @@ pub fn handle_hotseat_move(
 		},
 	];
 
-	let mut heuristic = Heuristic::new(&board, &[0, 0]);
+	let mut heuristic = Heuristic::new(&board, &captures);
 
 	let score = heuristic.get_heuristic();
 

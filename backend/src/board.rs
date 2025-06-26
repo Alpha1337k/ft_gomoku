@@ -95,7 +95,7 @@ impl Board {
 			}
 		}
 
-		println!("GET CAPTURES RES: {}, P: {}", rv, pos);
+		// println!("GET CAPTURES RES: {}, P: {}", rv, pos);
 
 		rv
 	}
@@ -112,7 +112,6 @@ impl Board {
 		}
 
 		let mut captures = capture_map.unwrap_or_else(|| Self::get_captures(self, pos, player));
-		let captures_store = captures;
 
 		let mut capture_count = 0;
 
@@ -146,10 +145,7 @@ impl Board {
 					self[pos.clone().relocate(map[0][0], map[0][1]).unwrap()] = Piece::Empty;
 					self[pos.clone().relocate(map[1][0], map[1][1]).unwrap()] = Piece::Empty;
 				} else {
-					println!("\nFAILED CAPTURE AT POS: {} ({})", pos, captures_store);
-					dbg!(player, map[0], map[1]);
-					println!("{}", self);
-					panic!();
+					panic!("Failed capture at {}. This should not happen: Player: {} {:?}", pos, player, map);
 				}
 
 				capture_count += 1;

@@ -1,21 +1,18 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{
-	net::{SocketAddr, TcpStream},
-	thread,
-};
+use std::net::{SocketAddr, TcpStream};
 use thiserror::Error;
 use websocket::OwnedMessage;
 use websocket::{
 	server::upgrade::WsUpgrade,
-	sync::{server::upgrade::Buffer, Reader, Server, Writer},
+	sync::{server::upgrade::Buffer, Reader, Writer},
 };
 
 use crate::{
 	api::{
 		calculate::handle_calculate, evaluate::handle_evaluate, hotseat_move::handle_hotseat_move,
-		invalid_moves::handle_get_invalid_moves,
+		invalid_moves::handle_get_invalid_moves, utils::send_ws_message,
 	},
 	board::Board,
 	piece::Piece,
@@ -75,27 +72,6 @@ pub struct GomokuClient {
 }
 
 impl GomokuClient {
-	pub fn send_message<T: Serialize>(
-		&mut self,
-		request_id: Option<String>,
-		subject: &str,
-		data: T,
-	) -> Result<()> {
-		let data_value = serde_json::to_value(data).expect("Failed to serialize data");
-
-		let message = WSMessage {
-			request_id,
-			subject: subject.to_string(),
-			data: data_value,
-		};
-
-		let message = serde_json::to_string(&message)?;
-
-		self.sender.send_message(&OwnedMessage::Text(message))?;
-
-		Ok(())
-	}
-
 	pub fn new(request: WsUpgrade<TcpStream, Option<Buffer>>) -> Result<GomokuClient> {
 		if !request.protocols().contains(&"rust-websocket".to_string()) {
 			request.reject().unwrap();
@@ -109,6 +85,8 @@ impl GomokuClient {
 
 		let ip = client.peer_addr()?;
 		let (receiver, sender) = client.split()?;
+
+		println!("Client {} connected", &ip);
 
 		Ok(GomokuClient {
 			receiver,
@@ -165,12 +143,15 @@ impl GomokuClient {
 
 						println!("ft_gomoku: error: {}", error);
 
-						self.send_message(Some(request_id), "error", error.to_string())
-							.unwrap_or_else(|_| {
-								println!(
-									"ft_gomoku: error: failed to send error message to client"
-								);
-							});
+						send_ws_message(
+							&mut self.sender,
+							Some(request_id),
+							"error",
+							error.to_string(),
+						)
+						.unwrap_or_else(|_| {
+							println!("ft_gomoku: error: failed to send error message to client");
+						});
 					}
 				}
 				_ => self.sender.send_message(&message).unwrap(),
