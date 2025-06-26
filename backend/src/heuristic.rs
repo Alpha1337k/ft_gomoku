@@ -1,8 +1,17 @@
-use std::{cmp::Ordering};
+use std::cmp::Ordering;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{block_position::BlockPosition, board::Board, constants::{BOARD_DIM, CAPTURE_SCORES, DIRECTIONS}, line::Line, line_store::LineStore, minimax::GameState, piece::{Piece, PieceWrap}, position::Position};
+use crate::{
+	block_position::BlockPosition,
+	board::Board,
+	constants::{BOARD_DIM, CAPTURE_SCORES, DIRECTIONS},
+	line::Line,
+	line_store::LineStore,
+	minimax::GameState,
+	piece::{Piece, PieceWrap},
+	position::Position,
+};
 
 #[derive(Clone, Debug)]
 struct LineResult {
@@ -14,12 +23,10 @@ struct LineResult {
 pub struct EvaluationScore {
 	pub score: f32,
 	pub capture_map: u8,
-	pub capture_count: usize
+	pub capture_count: usize,
 }
 
-
-fn get_distance(p1: &Position, p2: &Position) -> i32
-{
+fn get_distance(p1: &Position, p2: &Position) -> i32 {
 	((p1.x as f32 - p2.x as f32).powi(2) + (p1.y as f32 - p2.y as f32).powi(2)).sqrt() as i32
 }
 
@@ -32,7 +39,7 @@ pub struct Heuristic {
 	pub board: Board,
 	pub captures: [usize; 2],
 	pub lines: LineStore,
-	pub score: Option<f32>
+	pub score: Option<f32>,
 }
 
 impl Heuristic {
@@ -56,7 +63,7 @@ impl Heuristic {
 			lines: self.lines.clone(),
 			score: None,
 		};
-	
+
 		let diff = Board::get_diff(&n.board, &self.board);
 
 		let mut lines_to_delete = FxHashSet::<usize>::default();
@@ -76,13 +83,18 @@ impl Heuristic {
 							lines_to_delete.extend(recalculation.2.unwrap());
 						}
 
-						if pos.clone().relocate(direction[1][0], direction[1][1]).as_ref()
-							.is_ok_and(|pos| is_point_on_line(recalculation.0, recalculation.1, **pos)) {
+						if pos
+							.clone()
+							.relocate(direction[1][0], direction[1][1])
+							.as_ref()
+							.is_ok_and(|pos| {
+								is_point_on_line(recalculation.0, recalculation.1, **pos)
+							}) {
 							continue;
 						}
 					}
 				}
-				
+
 				if let Ok(pos) = pos.clone().relocate(direction[1][0], direction[1][1]) {
 					if let Some(l) = n.lines.get_mut(pos, i) {
 						lines_to_delete.insert(l.id);
@@ -105,7 +117,7 @@ impl Heuristic {
 
 		n
 	}
-	
+
 	fn calculate_captures(value: &usize) -> f32 {
 		CAPTURE_SCORES[(*value).min(5)]
 	}
@@ -117,13 +129,12 @@ impl Heuristic {
 		(y + x) / 2f32
 	}
 
-	fn get_line_length(&self, direction: [i32; 2], start: Position, player: Piece) -> LineResult
-	{
+	fn get_line_length(&self, direction: [i32; 2], start: Position, player: Piece) -> LineResult {
 		let mut pos = start;
 		let mut response = LineResult {
 			blocked: true,
 			end: start,
-			length: 0
+			length: 0,
 		};
 
 		loop {
@@ -144,10 +155,15 @@ impl Heuristic {
 		}
 	}
 
-	fn evaluate_position(&mut self, pos: Position, direction: &[[i32; 2]; 2], direction_idx: usize) -> (Position, Position, Option<FxHashSet<usize>>) {
+	fn evaluate_position(
+		&mut self,
+		pos: Position,
+		direction: &[[i32; 2]; 2],
+		direction_idx: usize,
+	) -> (Position, Position, Option<FxHashSet<usize>>) {
 		let scores = [
 			self.get_line_length(direction[0], pos, self.board[&pos]),
-			self.get_line_length(direction[1], pos, self.board[&pos])
+			self.get_line_length(direction[1], pos, self.board[&pos]),
 		];
 
 		let block_count: u8 = ((scores[1].blocked as u8) << 1) | scores[0].blocked as u8;
@@ -158,7 +174,14 @@ impl Heuristic {
 			return (scores[0].end, scores[1].end, None);
 		}
 
-		let overwritten = self.lines.insert(self.board[&pos], block_count.try_into().unwrap(), scores[0].end, scores[1].end, direction_idx, length);
+		let overwritten = self.lines.insert(
+			self.board[&pos],
+			block_count.try_into().unwrap(),
+			scores[0].end,
+			scores[1].end,
+			direction_idx,
+			length,
+		);
 
 		(scores[0].end, scores[1].end, Some(overwritten))
 	}
@@ -166,8 +189,8 @@ impl Heuristic {
 	pub fn get_heuristic(&mut self) -> f32 {
 		let mut scores = [0.0, 0.0];
 		let capture_scores = [
-			Self::calculate_captures(&self.captures[Piece::Max as usize]), 
-			Self::calculate_captures(&self.captures[Piece::Min as usize]), 	
+			Self::calculate_captures(&self.captures[Piece::Max as usize]),
+			Self::calculate_captures(&self.captures[Piece::Min as usize]),
 		];
 
 		if capture_scores[0].is_infinite() || capture_scores[1].is_infinite() {
@@ -184,24 +207,20 @@ impl Heuristic {
 			}
 		}
 
-
 		let mut solo_scores = 0.0;
 
 		for pos in &self.board {
 			match self.board[&pos] {
 				Piece::Max => solo_scores += Self::get_position_score(pos),
 				Piece::Min => solo_scores -= Self::get_position_score(pos),
-				_ => ()
+				_ => (),
 			}
 		}
 
 		// println!("{} {} {} {} {}", scores[0], scores[1], solo_scores, capture_scores[0], capture_scores[1]);
 
-		self.score = Some(
-			scores[0] + scores[1] + 
-			solo_scores + 
-			capture_scores[0] - capture_scores[1]
-		);
+		self.score =
+			Some(scores[0] + scores[1] + solo_scores + capture_scores[0] - capture_scores[1]);
 
 		// for line in &self.lines {
 		// 	println!("LN: {} {} L:{} S:{} B:{}", line.1.start, line.1.end, line.1.length, line.1.score, line.1.block_pos);
@@ -232,21 +251,31 @@ impl Heuristic {
 		self
 	}
 
-	fn get_virtual_move_constraints(&self, 
-		player: Piece, block_value: BlockPosition, neighbor_line: Option<&Line>, 
-		neighbor: Piece, cursor: &Position, direction: [i32; 2]
+	fn get_virtual_move_constraints(
+		&self,
+		player: Piece,
+		block_value: BlockPosition,
+		neighbor_line: Option<&Line>,
+		neighbor: Piece,
+		cursor: &Position,
+		direction: [i32; 2],
 	) -> (f32, BlockPosition, usize) {
 		let mut delta = 0.0;
 		let mut blocks = BlockPosition::NONE;
 		let mut length = 0;
 
-		let opposite_block = if block_value == BlockPosition::END { BlockPosition::START } else { BlockPosition::END };
+		let opposite_block = if block_value == BlockPosition::END {
+			BlockPosition::START
+		} else {
+			BlockPosition::END
+		};
 
 		if let Some(line) = neighbor_line {
 			if line.player != player {
 				let neighbor_blocks = (line.block_pos & block_value) | opposite_block;
 
-				let new_n_score = Line::calculate(neighbor_blocks, line.length, player.get_opposite());
+				let new_n_score =
+					Line::calculate(neighbor_blocks, line.length, player.get_opposite());
 				delta -= line.score;
 				delta += new_n_score;
 			} else {
@@ -254,12 +283,14 @@ impl Heuristic {
 				length += line.length;
 				delta -= line.score;
 			}
-		} 
-		
+		}
+
 		if neighbor == player.get_opposite() {
 			blocks |= block_value;
 		} else if neighbor == player {
-			if cursor.clone().relocate(direction[0], direction[1]).is_ok() && self.board[cursor] == player.get_opposite() {
+			if cursor.clone().relocate(direction[0], direction[1]).is_ok()
+				&& self.board[cursor] == player.get_opposite()
+			{
 				blocks |= block_value;
 			}
 			length += 1;
@@ -268,7 +299,11 @@ impl Heuristic {
 		(delta, blocks, length)
 	}
 
-	pub fn evaluate_virtual_move(&self, pos: Position, player: Piece) -> Result<EvaluationScore, &str> {
+	pub fn evaluate_virtual_move(
+		&self,
+		pos: Position,
+		player: Piece,
+	) -> Result<EvaluationScore, &str> {
 		let mut result = EvaluationScore {
 			score: self.score.unwrap(),
 			capture_map: 0u8,
@@ -281,18 +316,42 @@ impl Heuristic {
 			let mut _nb_1 = pos;
 
 			let neighbor_lines = [
-				 if _nb_0.relocate(direction[0][0], direction[0][1]).is_ok() {self.lines.get(&_nb_0, i)} else {None},
-				 if _nb_1.relocate(direction[1][0], direction[1][1]).is_ok() {self.lines.get(&_nb_1, i)} else {None},
+				if _nb_0.relocate(direction[0][0], direction[0][1]).is_ok() {
+					self.lines.get(&_nb_0, i)
+				} else {
+					None
+				},
+				if _nb_1.relocate(direction[1][0], direction[1][1]).is_ok() {
+					self.lines.get(&_nb_1, i)
+				} else {
+					None
+				},
 			];
 
 			let neighbor_blocks = [
-				if neighbor_lines[0].is_none() && _nb_0.check_pos().is_ok() {self.board[&_nb_0]} else {Piece::Empty},
-				if neighbor_lines[1].is_none() && _nb_1.check_pos().is_ok() {self.board[&_nb_1]} else {Piece::Empty},
+				if neighbor_lines[0].is_none() && _nb_0.check_pos().is_ok() {
+					self.board[&_nb_0]
+				} else {
+					Piece::Empty
+				},
+				if neighbor_lines[1].is_none() && _nb_1.check_pos().is_ok() {
+					self.board[&_nb_1]
+				} else {
+					Piece::Empty
+				},
 			];
 
 			let capture_map = [
-				neighbor_lines[0].is_some_and(|x| x.player.is_opposite(&player) && neighbor_lines[0].unwrap().length == 2 && x.block_pos.has_start()),
-				neighbor_lines[1].is_some_and(|x| x.player.is_opposite(&player) && neighbor_lines[1].unwrap().length == 2 && x.block_pos.has_end())
+				neighbor_lines[0].is_some_and(|x| {
+					x.player.is_opposite(&player)
+						&& neighbor_lines[0].unwrap().length == 2
+						&& x.block_pos.has_start()
+				}),
+				neighbor_lines[1].is_some_and(|x| {
+					x.player.is_opposite(&player)
+						&& neighbor_lines[1].unwrap().length == 2
+						&& x.block_pos.has_end()
+				}),
 			];
 
 			// println!("NB_L: {}, {} NB_B: {}, {} POS: {}", neighbor_lines[0].is_some(), neighbor_lines[1].is_some(), neighbor_blocks[0], neighbor_blocks[1], pos);
@@ -301,21 +360,34 @@ impl Heuristic {
 			let mut length = 1;
 			let mut blocks = BlockPosition::NONE;
 
-			let (d1_score, d1_blocks, d1_length) = self.get_virtual_move_constraints(player, BlockPosition::START, neighbor_lines[0], neighbor_blocks[0], &_nb_0, direction[0]);
+			let (d1_score, d1_blocks, d1_length) = self.get_virtual_move_constraints(
+				player,
+				BlockPosition::START,
+				neighbor_lines[0],
+				neighbor_blocks[0],
+				&_nb_0,
+				direction[0],
+			);
 
 			new_calc += d1_score;
 			length += d1_length;
 			blocks |= d1_blocks;
 
-			let (d2_score, d2_blocks, d2_length) = self.get_virtual_move_constraints(player, BlockPosition::END, neighbor_lines[1], neighbor_blocks[1], &_nb_1, direction[1]);
+			let (d2_score, d2_blocks, d2_length) = self.get_virtual_move_constraints(
+				player,
+				BlockPosition::END,
+				neighbor_lines[1],
+				neighbor_blocks[1],
+				&_nb_1,
+				direction[1],
+			);
 
 			new_calc += d2_score;
 			length += d2_length;
 			blocks |= d2_blocks;
 
-			
 			new_calc += Line::calculate(blocks, length, player);
-					
+
 			if capture_map[0] {
 				result.capture_map |= 1u8 << (i * 2);
 				result.capture_count += 1;
@@ -330,7 +402,10 @@ impl Heuristic {
 		Ok(result)
 	}
 
-	fn sort_moves(mut arr: Vec<(Position, EvaluationScore)>, player: Piece) -> Vec<(Position, EvaluationScore)> {
+	fn sort_moves(
+		mut arr: Vec<(Position, EvaluationScore)>,
+		player: Piece,
+	) -> Vec<(Position, EvaluationScore)> {
 		arr.sort_by(|a, b| {
 			match a.1.capture_count.cmp(&b.1.capture_count) {
 				Ordering::Greater => return Ordering::Less,
@@ -362,10 +437,10 @@ impl Heuristic {
 				for x in -1..2 {
 					let mut check_pos = pos;
 
-					if (x == 0 && y == 0) || 
-						check_pos.relocate(x, y).is_err() ||
-						self.board[&check_pos].is_piece() ||
-						moves.contains_key(&check_pos)
+					if (x == 0 && y == 0)
+						|| check_pos.relocate(x, y).is_err()
+						|| self.board[&check_pos].is_piece()
+						|| moves.contains_key(&check_pos)
 					{
 						continue;
 					}

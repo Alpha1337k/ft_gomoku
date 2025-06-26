@@ -1,11 +1,11 @@
-use std::{fmt};
 use serde_repr::*;
+use std::fmt;
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum PieceError {
-    #[error("Invalid piece value: {value}")]
-    InvalidValue { value: u64 },
+	#[error("Invalid piece value: {value}")]
+	InvalidValue { value: u64 },
 }
 
 #[derive(Clone, Copy, PartialEq, Deserialize_repr, Serialize_repr, Debug, Default)]
@@ -14,7 +14,7 @@ pub enum Piece {
 	#[default]
 	Empty = -1,
 	Max = 0,
-	Min = 1
+	Min = 1,
 }
 
 pub trait PieceWrap {
@@ -35,7 +35,7 @@ impl TryFrom<u64> for Piece {
 		match value {
 			x if x == Piece::Max as u64 => Ok(Piece::Max),
 			x if x == Piece::Min as u64 => Ok(Piece::Min),
-			_ => Err(PieceError::InvalidValue { value })
+			_ => Err(PieceError::InvalidValue { value }),
 		}
 	}
 }
@@ -84,7 +84,7 @@ impl PieceWrap for Piece {
 		match self {
 			Piece::Empty => panic!(),
 			Piece::Max => Piece::Min,
-			Piece::Min => Piece::Max
+			Piece::Min => Piece::Max,
 		}
 	}
 }

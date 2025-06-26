@@ -3,15 +3,21 @@ use crate::{heuristic::EvaluationScore, position::Position};
 pub fn print_moveset(base_pos: &Position, base_order_idx: usize, base_score: f32, m: &Move) {
 	let mut iter = m;
 
-	print!("Start score: {}, moves: ( {} ({}) [{}, {}] = {} )", base_score, base_pos, base_order_idx, iter.captures[0], iter.captures[1] , iter.depth_score);
+	print!(
+		"Start score: {}, moves: ( {} ({}) [{}, {}] = {} )",
+		base_score, base_pos, base_order_idx, iter.captures[0], iter.captures[1], iter.depth_score
+	);
 
 	loop {
 		if iter.child.is_none() {
 			break;
 		}
 		print!(" -> ");
-		print!("( {} ({}) [{}, {}]", iter.position, iter.order_idx, iter.captures[0], iter.captures[1]);
-		
+		print!(
+			"( {} ({}) [{}, {}]",
+			iter.position, iter.order_idx, iter.captures[0], iter.captures[1]
+		);
+
 		if iter.child.is_some() {
 			iter = iter.child.as_ref().unwrap().as_ref();
 			print!(" = {})", iter.depth_score);
@@ -19,7 +25,6 @@ pub fn print_moveset(base_pos: &Position, base_order_idx: usize, base_score: f32
 	}
 	println!();
 }
-
 
 #[derive(Debug)]
 pub struct Move {
@@ -48,11 +53,15 @@ impl Default for Move {
 			position: Position::new(0, 0),
 		}
 	}
-	
 }
 
 impl Move {
-	pub fn update(&mut self, order: usize, child_move: Move, pos_move: &(Position, EvaluationScore)) {
+	pub fn update(
+		&mut self,
+		order: usize,
+		child_move: Move,
+		pos_move: &(Position, EvaluationScore),
+	) {
 		self.score = child_move.score;
 		self.position = pos_move.0;
 		self.order_idx = order;

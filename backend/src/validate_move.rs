@@ -1,18 +1,26 @@
-
-
-
-
-use crate::{constants::DIRECTIONS, heuristic::Heuristic, piece::{Piece, PieceWrap}, position::Position};
+use crate::{
+	constants::DIRECTIONS,
+	heuristic::Heuristic,
+	piece::{Piece, PieceWrap},
+	position::Position,
+};
 
 impl Heuristic {
-	fn validate_free_two_line_requirements(&self, lines: &[usize; 4], direction_idx: usize, player: Piece) -> bool {
+	fn validate_free_two_line_requirements(
+		&self,
+		lines: &[usize; 4],
+		direction_idx: usize,
+		player: Piece,
+	) -> bool {
 		let line = &self.lines.get_id(&lines[direction_idx]);
-			
+
 		if line.is_none() {
 			return false;
 		}
 
-		line.unwrap().block_pos.is_none() && line.unwrap().player == player && line.unwrap().length == 2
+		line.unwrap().block_pos.is_none()
+			&& line.unwrap().player == player
+			&& line.unwrap().length == 2
 	}
 
 	pub fn get_invalid_moves(&self, player: Piece) -> Vec<Position> {
@@ -27,12 +35,19 @@ impl Heuristic {
 		positions
 	}
 
-	fn is_free_two(&self, mut pos: Position, direction: [i32; 2], direction_idx: usize, player: Piece) -> i32 {
+	fn is_free_two(
+		&self,
+		mut pos: Position,
+		direction: [i32; 2],
+		direction_idx: usize,
+		player: Piece,
+	) -> i32 {
 		if pos.relocate(direction[0], direction[1]).is_err() {
-			return -1
+			return -1;
 		}
-		if self.lines.get_pos(&pos)
-			.is_some_and(|lines| self.validate_free_two_line_requirements(lines, direction_idx, player)) {
+		if self.lines.get_pos(&pos).is_some_and(|lines| {
+			self.validate_free_two_line_requirements(lines, direction_idx, player)
+		}) {
 			return 1;
 		}
 
@@ -41,11 +56,12 @@ impl Heuristic {
 		}
 
 		if pos.relocate(direction[0], direction[1]).is_err() {
-			return 0
+			return 0;
 		}
 
-		if self.lines.get_pos(&pos)
-			.is_some_and(|lines| self.validate_free_two_line_requirements(lines, direction_idx, player)) {
+		if self.lines.get_pos(&pos).is_some_and(|lines| {
+			self.validate_free_two_line_requirements(lines, direction_idx, player)
+		}) {
 			return 1;
 		}
 
@@ -59,7 +75,7 @@ impl Heuristic {
 		for (i, direction) in DIRECTIONS.iter().enumerate() {
 			let results = (
 				self.is_free_two(pos, direction[0], i, player),
-				self.is_free_two(pos, direction[1], i, player)
+				self.is_free_two(pos, direction[1], i, player),
 			);
 
 			if results.0 == -1 || results.1 == -1 || results.0 + results.1 != 1 {

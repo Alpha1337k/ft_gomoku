@@ -4,8 +4,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum BlockPositionError {
-    #[error("Position exceeds bounds: {value}")]
-    ExceedsBounds { value: u8 },
+	#[error("Position exceeds bounds: {value}")]
+	ExceedsBounds { value: u8 },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,7 +42,6 @@ impl BitOr for BlockPosition {
 			.try_into()
 			.unwrap_or(BlockPosition::NONE)
 	}
-	
 }
 
 impl BitOrAssign for BlockPosition {
@@ -62,7 +61,7 @@ impl TryFrom<u8> for BlockPosition {
 			0x1 => Ok(BlockPosition::START),
 			0x2 => Ok(BlockPosition::END),
 			0x3 => Ok(BlockPosition::BOTH),
-			_ => Err(BlockPositionError::ExceedsBounds { value })
+			_ => Err(BlockPositionError::ExceedsBounds { value }),
 		}
 	}
 }

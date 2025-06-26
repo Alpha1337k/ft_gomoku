@@ -5,23 +5,31 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use websocket::sync::Writer;
 
-use crate::{api::{utils::resolve_infinity, utils::send_ws_message}, board::Board, heuristic::Heuristic, piece::Piece, position::Position};
+use crate::{
+	api::{utils::resolve_infinity, utils::send_ws_message},
+	board::Board,
+	heuristic::Heuristic,
+	piece::Piece,
+	position::Position,
+};
 
 #[derive(Deserialize)]
 pub struct EvalRequest {
 	board: serde_json::Map<String, Value>,
-	player: Piece
+	player: Piece,
 }
 
 #[derive(Serialize, Deserialize)]
-struct EvaluationResponse
-{
+struct EvaluationResponse {
 	moves: Vec<(Position, (f32, u8))>,
 	board_score: f32,
 }
 
-
-pub fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: String, data: Value) -> Result<()> {
+pub fn handle_evaluate(
+	sender: &mut Writer<TcpStream>,
+	request_id: String,
+	data: Value,
+) -> Result<()> {
 	let request: EvalRequest = serde_json::from_value(data)?;
 
 	let board = Board::from_map(&request.board)?;
@@ -34,10 +42,18 @@ pub fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: String, data:
 		mv.1.score = resolve_infinity(mv.1.score);
 	}
 
-	send_ws_message(sender, Some(request_id), "evaluate", EvaluationResponse {
-		board_score: resolve_infinity(board_score),
-		moves: moves.iter().map(|f| (f.0, (f.1.score, f.1.capture_map))).collect()		
-	})?;
+	send_ws_message(
+		sender,
+		Some(request_id),
+		"evaluate",
+		EvaluationResponse {
+			board_score: resolve_infinity(board_score),
+			moves: moves
+				.iter()
+				.map(|f| (f.0, (f.1.score, f.1.capture_map)))
+				.collect(),
+		},
+	)?;
 
 	Result::Ok(())
 }

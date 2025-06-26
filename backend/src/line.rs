@@ -1,4 +1,9 @@
-use crate::{block_position::BlockPosition, constants::{B0_SCORES, B1_SCORES, B2_SCORES}, piece::Piece, position::Position};
+use crate::{
+	block_position::BlockPosition,
+	constants::{B0_SCORES, B1_SCORES, B2_SCORES},
+	piece::Piece,
+	position::Position,
+};
 
 #[derive(Clone, Debug)]
 pub struct Line {
@@ -13,7 +18,15 @@ pub struct Line {
 }
 
 impl Line {
-	pub fn new(idx: usize, player: Piece, block_pos: BlockPosition, start: Position, end: Position, direction: u8, length: usize) -> Line {
+	pub fn new(
+		idx: usize,
+		player: Piece,
+		block_pos: BlockPosition,
+		start: Position,
+		end: Position,
+		direction: u8,
+		length: usize,
+	) -> Line {
 		Line {
 			id: idx,
 			start,
@@ -34,6 +47,6 @@ impl Line {
 			BlockPosition::BOTH => B2_SCORES[length.min(5)],
 		};
 
-		val * if player == Piece::Max {1.0} else {-1.0}
+		val * if player == Piece::Max { 1.0 } else { -1.0 }
 	}
 }

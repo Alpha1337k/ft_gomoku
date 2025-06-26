@@ -1,17 +1,31 @@
-use std::{net::{SocketAddr, TcpStream}, thread};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use websocket::OwnedMessage;
-use anyhow::{Result};
+use serde_json::Value;
+use std::{
+	net::{SocketAddr, TcpStream},
+	thread,
+};
 use thiserror::Error;
-use websocket::{server::upgrade::WsUpgrade, sync::{server::upgrade::Buffer, Reader, Server, Writer}};
-use serde_json::{Value};
+use websocket::OwnedMessage;
+use websocket::{
+	server::upgrade::WsUpgrade,
+	sync::{server::upgrade::Buffer, Reader, Server, Writer},
+};
 
-use crate::{api::{calculate::handle_calculate, evaluate::handle_evaluate, hotseat_move::handle_hotseat_move, invalid_moves::handle_get_invalid_moves}, board::Board, piece::Piece, position::Position};
+use crate::{
+	api::{
+		calculate::handle_calculate, evaluate::handle_evaluate, hotseat_move::handle_hotseat_move,
+		invalid_moves::handle_get_invalid_moves,
+	},
+	board::Board,
+	piece::Piece,
+	position::Position,
+};
 
 mod calculate;
-mod invalid_moves;
-mod hotseat_move;
 mod evaluate;
+mod hotseat_move;
+mod invalid_moves;
 mod utils;
 
 #[derive(Deserialize)]
@@ -21,7 +35,7 @@ pub struct CalculateRequest {
 	pub in_move: Option<Position>,
 	pub player: Piece,
 	pub captures: [usize; 2],
-	pub is_hint: Option<bool>
+	pub is_hint: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -33,18 +47,16 @@ pub struct MoveFlat {
 }
 
 #[derive(Serialize)]
-pub struct BoardUpdateResponse<'a>
-{
+pub struct BoardUpdateResponse<'a> {
 	board: &'a Board,
 	captures: [usize; 2],
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct WSMessage
-{
+pub struct WSMessage {
 	subject: String,
 	request_id: Option<String>,
-	data: serde_json::Value
+	data: serde_json::Value,
 }
 
 #[derive(Error, Clone, Debug)]
@@ -53,23 +65,28 @@ enum ServerError {
 	InvalidProtocol,
 
 	#[error("Unknown Command provided: {value}")]
-	UnknownCommand { value: String }
+	UnknownCommand { value: String },
 }
 
 pub struct GomokuClient {
 	receiver: Reader<TcpStream>,
 	sender: Writer<TcpStream>,
-	ip: SocketAddr
+	ip: SocketAddr,
 }
 
 impl GomokuClient {
-	pub fn send_message<T: Serialize>(&mut self, request_id: Option<String>, subject: &str, data: T) -> Result<()> {
+	pub fn send_message<T: Serialize>(
+		&mut self,
+		request_id: Option<String>,
+		subject: &str,
+		data: T,
+	) -> Result<()> {
 		let data_value = serde_json::to_value(data).expect("Failed to serialize data");
 
 		let message = WSMessage {
 			request_id,
 			subject: subject.to_string(),
-			data: data_value
+			data: data_value,
 		};
 
 		let message = serde_json::to_string(&message)?;
@@ -85,7 +102,10 @@ impl GomokuClient {
 			return Err(ServerError::InvalidProtocol.into());
 		}
 
-		let client = request.use_protocol("rust-websocket").accept().map_err(|e| anyhow::anyhow!("{:?}", e))?;
+		let client = request
+			.use_protocol("rust-websocket")
+			.accept()
+			.map_err(|e| anyhow::anyhow!("{:?}", e))?;
 
 		let ip = client.peer_addr()?;
 		let (receiver, sender) = client.split()?;
@@ -93,7 +113,7 @@ impl GomokuClient {
 		Ok(GomokuClient {
 			receiver,
 			sender,
-			ip
+			ip,
 		})
 	}
 
@@ -120,11 +140,24 @@ impl GomokuClient {
 					let request_id = message.request_id.unwrap();
 
 					let result = match message.subject.as_str() {
-						"calculate" => handle_calculate(&mut self.sender, request_id.clone(), message.data),
-						"inv_moves" => handle_get_invalid_moves(&mut self.sender, request_id.clone(), message.data),
-						"hotseat_move" => handle_hotseat_move(&mut self.sender, request_id.clone(), message.data),
-						"evaluate" => handle_evaluate(&mut self.sender, request_id.clone(), message.data),
-						_ => Err(ServerError::UnknownCommand { value: message.subject }.into())
+						"calculate" => {
+							handle_calculate(&mut self.sender, request_id.clone(), message.data)
+						}
+						"inv_moves" => handle_get_invalid_moves(
+							&mut self.sender,
+							request_id.clone(),
+							message.data,
+						),
+						"hotseat_move" => {
+							handle_hotseat_move(&mut self.sender, request_id.clone(), message.data)
+						}
+						"evaluate" => {
+							handle_evaluate(&mut self.sender, request_id.clone(), message.data)
+						}
+						_ => Err(ServerError::UnknownCommand {
+							value: message.subject,
+						}
+						.into()),
 					};
 
 					if result.is_err() {
@@ -134,7 +167,9 @@ impl GomokuClient {
 
 						self.send_message(Some(request_id), "error", error.to_string())
 							.unwrap_or_else(|_| {
-								println!("ft_gomoku: error: failed to send error message to client");
+								println!(
+									"ft_gomoku: error: failed to send error message to client"
+								);
 							});
 					}
 				}

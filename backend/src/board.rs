@@ -1,12 +1,13 @@
+use std::fmt;
 
-
-
-use std::{fmt};
-
+use crate::{
+	constants::{BOARD_DIM, BOARD_SIZE, BOARD_WIDTH},
+	piece::{Piece, PieceWrap},
+	position::Position,
+};
 use serde::Serialize;
 use serde_json::Value;
 use thiserror::Error;
-use crate::{constants::{BOARD_DIM, BOARD_SIZE, BOARD_WIDTH}, piece::{Piece, PieceWrap}, position::Position};
 
 #[derive(Clone, Serialize)]
 pub struct Board {
@@ -15,8 +16,8 @@ pub struct Board {
 
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum BoardError {
-    #[error("Board contains invalid value: {value}")]
-    InvalidValue { value: String },
+	#[error("Board contains invalid value: {value}")]
+	InvalidValue { value: String },
 }
 
 impl Default for Board {
@@ -27,19 +28,22 @@ impl Default for Board {
 
 impl Board {
 	pub fn new() -> Board {
-		Board { 
+		Board {
 			data: vec![Piece::Empty; BOARD_SIZE],
 		}
 	}
 
 	pub fn from_map(board_map: &serde_json::Map<String, Value>) -> Result<Board, BoardError> {
-		let mut board =  Board { 
+		let mut board = Board {
 			data: vec![Piece::Empty; BOARD_SIZE],
-		 };
+		};
 
-		 for (key, value) in board_map {
-			let key_int = key.parse::<usize>().map_err(|_| BoardError::InvalidValue { value: key.clone() })?;
-			board.data[key_int] = value.as_u64()
+		for (key, value) in board_map {
+			let key_int = key
+				.parse::<usize>()
+				.map_err(|_| BoardError::InvalidValue { value: key.clone() })?;
+			board.data[key_int] = value
+				.as_u64()
 				.and_then(|v| v.try_into().ok())
 				.unwrap_or_default();
 		}
@@ -49,7 +53,7 @@ impl Board {
 
 	pub fn get_diff(b1: &Board, b2: &Board) -> Vec<Position> {
 		let mut diffs = Vec::with_capacity(4);
-		
+
 		for pos in b1 {
 			if b1[&pos] != b2[&pos] {
 				diffs.push(pos);
@@ -74,9 +78,19 @@ impl Board {
 		let mut rv = 0;
 
 		for (i, direction) in directions.iter().enumerate() {
-			if pos.clone().relocate(direction[0][0], direction[0][1]).is_ok_and(|f| board[f] == player.get_opposite()) &&
-				pos.clone().relocate(direction[1][0], direction[1][1]).is_ok_and(|f| board[f] == player.get_opposite()) &&
-				pos.clone().relocate(direction[2][0], direction[2][1]).is_ok_and(|f| board[f].is_equal(&player)) {
+			if pos
+				.clone()
+				.relocate(direction[0][0], direction[0][1])
+				.is_ok_and(|f| board[f] == player.get_opposite())
+				&& pos
+					.clone()
+					.relocate(direction[1][0], direction[1][1])
+					.is_ok_and(|f| board[f] == player.get_opposite())
+				&& pos
+					.clone()
+					.relocate(direction[2][0], direction[2][1])
+					.is_ok_and(|f| board[f].is_equal(&player))
+			{
 				rv |= 1u8 << i;
 			}
 		}
@@ -120,8 +134,15 @@ impl Board {
 				let map = maps[map_idx];
 				// println!("TAKING FOR IDX {} MOVE {}", map_idx, pos);
 
-				if pos.clone().relocate(map[0][0], map[0][1]).is_ok_and(|x| self[x] == player.get_opposite()) && 
-					pos.clone().relocate(map[1][0], map[1][1]).is_ok_and(|x| self[x] == player.get_opposite()) {
+				if pos
+					.clone()
+					.relocate(map[0][0], map[0][1])
+					.is_ok_and(|x| self[x] == player.get_opposite())
+					&& pos
+						.clone()
+						.relocate(map[1][0], map[1][1])
+						.is_ok_and(|x| self[x] == player.get_opposite())
+				{
 					self[pos.clone().relocate(map[0][0], map[0][1]).unwrap()] = Piece::Empty;
 					self[pos.clone().relocate(map[1][0], map[1][1]).unwrap()] = Piece::Empty;
 				} else {
@@ -132,7 +153,6 @@ impl Board {
 				}
 
 				capture_count += 1;
-
 			}
 			captures >>= 1;
 			map_idx += 1;
@@ -147,34 +167,31 @@ impl Board {
 }
 
 impl std::ops::Index<&Position> for Board {
-    type Output = Piece;
+	type Output = Piece;
 
-    fn index(&self, idx: &Position) -> &Piece {
+	fn index(&self, idx: &Position) -> &Piece {
 		&self.data[idx.x + idx.y * BOARD_DIM]
-    }
+	}
 }
 
 impl std::ops::IndexMut<&Position> for Board {
-    fn index_mut(&mut self, idx: &Position) -> &mut Piece {
+	fn index_mut(&mut self, idx: &Position) -> &mut Piece {
 		&mut self.data[idx.x + idx.y * BOARD_DIM]
-    }
+	}
 }
 
 pub struct BoardIterator {
-	index: usize
+	index: usize,
 }
 
 impl<'a> IntoIterator for &'a Board {
-    type Item = Position;
-    type IntoIter = BoardIterator;
+	type Item = Position;
+	type IntoIter = BoardIterator;
 
-    fn into_iter(self) -> Self::IntoIter {
-        BoardIterator {
-            index: 0,
-        }
-    }
+	fn into_iter(self) -> Self::IntoIter {
+		BoardIterator { index: 0 }
+	}
 }
-
 
 impl Iterator for BoardIterator {
 	type Item = Position;
@@ -183,7 +200,7 @@ impl Iterator for BoardIterator {
 		self.index += 1;
 
 		if self.index >= 362 {
-			return None;			
+			return None;
 		}
 
 		Some(Position::from_u64(self.index - 1))
@@ -198,7 +215,7 @@ impl fmt::Display for Board {
 		}
 		for i in 0..BOARD_SIZE {
 			if i % BOARD_WIDTH == 0 {
-				write!(f, "\n{}:", ((i / BOARD_WIDTH) as u8 + 65) as char )?;
+				write!(f, "\n{}:", ((i / BOARD_WIDTH) as u8 + 65) as char)?;
 			}
 			write!(f, " {} ", self.data[i])?;
 		}
