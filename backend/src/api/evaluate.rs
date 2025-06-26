@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use websocket::sync::Writer;
 
-use crate::{api::{resolve_infinity, send_ws_message, GomokuClient}, board::Board, heuristic::Heuristic, piece::Piece, position::Position};
+use crate::{api::{utils::resolve_infinity, utils::send_ws_message}, board::Board, heuristic::Heuristic, piece::Piece, position::Position};
 
 #[derive(Deserialize)]
 pub struct EvalRequest {
@@ -20,20 +20,19 @@ struct EvaluationResponse
 	board_score: f32,
 }
 
+
 pub fn handle_evaluate(sender: &mut Writer<TcpStream>, request_id: String, data: Value) -> Result<()> {
 	let request: EvalRequest = serde_json::from_value(data)?;
-	let board = Board::from_map(&request.board)?;
 
+	let board = Board::from_map(&request.board)?;
 	let mut heuristic = Heuristic::new(&board, &[0, 0]);
 
 	let board_score = heuristic.get_heuristic();
 	let mut moves = heuristic.get_moves(request.player);
 
-	for i in 0..moves.len() {
-		moves[i].1.score = resolve_infinity(moves[i].1.score);
+	for mv in moves.iter_mut() {
+		mv.1.score = resolve_infinity(mv.1.score);
 	}
-
-	println!("Evaluating done");
 
 	send_ws_message(sender, Some(request_id), "evaluate", EvaluationResponse {
 		board_score: resolve_infinity(board_score),

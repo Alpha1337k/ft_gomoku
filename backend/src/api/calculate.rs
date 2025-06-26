@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use websocket::sync::Writer;
 
-use crate::{api::{get_moves, resolve_infinity, resolve_mate_depth, send_ws_message, BoardUpdateResponse, CalculateRequest, GomokuClient, MoveFlat}, heuristic::Heuristic, minimax::GomokuSolver, piece::Piece, position::Position};
+use crate::{api::{utils::get_moves, utils::resolve_infinity, utils::resolve_mate_depth, utils::send_ws_message, BoardUpdateResponse, CalculateRequest, MoveFlat}, heuristic::Heuristic, minimax::GomokuSolver, piece::Piece};
 use crate::piece::PieceWrap;
 
 #[derive(Serialize, Deserialize)]
@@ -54,12 +54,12 @@ pub fn handle_calculate(sender: &mut Writer<TcpStream>, request_id: String, data
 
 	send_ws_message(sender, Some(request_id), "calculate", CalculationResponse {
 		score: resolve_infinity(result.score),
-		current_score: current_score,
+		current_score,
 		depth_hits: solver.depth_entries,
 		moves,
 		mate_in,
 	})?;
 
 
-	return Result::Ok(());
+	Result::Ok(())
 }

@@ -6,13 +6,13 @@ use thiserror::Error;
 use websocket::{server::upgrade::WsUpgrade, sync::{server::upgrade::Buffer, Reader, Server, Writer}};
 use serde_json::{Value};
 
-use crate::{api::{calculate::handle_calculate, evaluate::handle_evaluate, hotseat_move::handle_hotseat_move, invalid_moves::handle_get_invalid_moves}, board::Board, game_move::Move, piece::Piece, position::Position};
+use crate::{api::{calculate::handle_calculate, evaluate::handle_evaluate, hotseat_move::handle_hotseat_move, invalid_moves::handle_get_invalid_moves}, board::Board, piece::Piece, position::Position};
 
 mod calculate;
 mod invalid_moves;
 mod hotseat_move;
 mod evaluate;
-
+mod utils;
 
 #[derive(Deserialize)]
 pub struct CalculateRequest {
@@ -30,77 +30,6 @@ pub struct MoveFlat {
 	pub position: Position,
 	pub order_idx: usize,
 	pub cutoff_at: usize,
-}
-
-pub fn get_moves(res: &Move) -> Vec<MoveFlat> {
-	let mut iter = res;
-
-	let mut moves = Vec::<MoveFlat>::new();
-
-	loop {
-		if iter.child.is_none() {
-			break;
-		}
-
-		println!("M: {}", iter.position);
-		moves.push(MoveFlat {
-			order_idx: iter.order_idx,
-			position: iter.position,
-			score: iter.score,
-			cutoff_at: iter.cutoff_at
-		});
-
-		if let Some(child) = &iter.child.as_ref() {
-			iter = child;
-		} else {
-			break;
-		}
-	}
-
-	return moves;
-}
-
-// json not supporting infinity. Using magic numbers
-pub fn resolve_infinity(val: f32) -> f32 {
-	if val.is_infinite() {
-		if val.is_sign_negative() {
-			return -1234.00;
-		}
-		else {
-			return 1234.00;
-		}
-	}
-	return val;
-}
-
-pub fn send_ws_message<T: Serialize>(sender: &mut Writer<TcpStream>, request_id: Option<String>, subject: &str, data: T) -> Result<()> {
-	let data_value = serde_json::to_value(data).expect("Failed to serialize data");
-
-	let message = WSMessage {
-		request_id,
-		subject: subject.to_string(),
-		data: data_value
-	};
-
-	let message = serde_json::to_string(&message)?;
-
-	sender.send_message(&OwnedMessage::Text(message))?;
-
-	Ok(())
-}
-
-pub fn resolve_mate_depth(score: &f32, moves: &Vec<MoveFlat>) -> Option<i32> {
-	if score.is_finite() {
-		return None;
-	}
-
-	let len = (moves.len() as i32 - 1).max(0);
-
-	if score.is_sign_positive() {
-		Some(len)
-	} else {
-		Some(-len)
-	}
 }
 
 #[derive(Serialize)]
@@ -127,7 +56,7 @@ enum ServerError {
 	UnknownCommand { value: String }
 }
 
-struct GomokuClient {
+pub struct GomokuClient {
 	receiver: Reader<TcpStream>,
 	sender: Writer<TcpStream>,
 	ip: SocketAddr
@@ -212,28 +141,5 @@ impl GomokuClient {
 				_ => self.sender.send_message(&message).unwrap(),
 			}
 		}
-	}
-}
-pub struct GomokuServer
-{
-	pub port: u16
-}
-
-impl GomokuServer {
-	pub fn start(&self) -> Result<(), &str> {
-		let address = format!("localhost:{}", self.port);
-
-		let server = Server::bind(address).expect(&format!("Failed to bind server to port {}", self.port));
-
-		for request in server.filter_map(Result::ok) {
-			thread::spawn(|| {
-				match GomokuClient::new(request) {
-					Err(e) => println!("Failed to start new client: {}", e),
-					Ok(mut c) => c.handle(),
-				}
-			});
-		}
-
-		Ok(())
 	}
 }
