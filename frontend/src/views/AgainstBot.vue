@@ -115,6 +115,7 @@ import { computed, ref } from "vue";
 import AppButton from "@/components/AppButton.vue";
 import ChooseSideModal from "@/components/ChooseSideModal.vue";
 import FutureMoves from "@/components/FutureMoves.vue";
+import { useToast } from "vue-toastification";
 
 const gameBoard = ref<Board>({});
 const score = ref(0);
@@ -130,6 +131,7 @@ const hint = ref<number>();
 const hintLoading = ref(false);
 const aiLoading = ref(false);
 const isEditMode = ref(false);
+const toast = useToast();
 const editState = ref<EvalState>();
 const editSettings = ref({
 	is_maximizing: true,
@@ -166,27 +168,35 @@ function reloadGame() {
 async function loadHint() {
 	hintLoading.value = true;
 
-	const calculationResponse = await gameState.ws.sendMessage<CalculationResponse>("calculate", {
+	await gameState.ws.sendMessage<CalculationResponse>("calculate", {
 		board: gameBoard.value,
 		depth: 6,
 		captures: captures.value,
 		player: isEditMode.value ? (editSettings.value.is_maximizing ? 0 : 1) : player.value,
 		is_hint: true,
-	});
+	}).then(calculationResponse => {
+		const move = calculationResponse.moves.shift()!;
+
+		hint.value = move.position.x + move.position.y * 19;
+	}).catch(err => {
+		toast.error(err);
+	})
 
 	hintLoading.value = false;
 
-	const move = calculationResponse.moves.shift()!;
-
-	hint.value = move.position.x + move.position.y * 19;
 }
 
 async function loadInvalidMoves() {
 	invalidMoves.value = undefined;
-	const moves: { x: number; y: number }[] = await gameState.ws.sendMessage("inv_moves", {
+	const moves = await gameState.ws.sendMessage<{ x: number; y: number }[]>("inv_moves", {
 		board: gameBoard.value,
 		player: player.value,
-	});
+	}).catch(err => {
+		toast.error(err)
+		return undefined;
+	})
+
+	if (!moves) return;
 
 	invalidMoves.value = moves.map((x) => x.x + x.y * 19);
 }
@@ -214,7 +224,15 @@ async function handleMoveSet(data?: { position: number; player?: number }) {
 		depth: 6,
 		player: player.value == Piece.Max ? Piece.Max : Piece.Min,
 		captures: captures.value,
-	});
+	}).catch(err => {
+		toast.error(err);
+		return undefined;
+	})
+
+	if (!newState) {
+		return;
+	}
+
 	const timerEnd = performance.now();
 	aiLoading.value = false;
 
@@ -276,7 +294,12 @@ async function submitEdit(data?: { position: number; player?: number }) {
 	const response = await gameState.ws.sendMessage<EvalState>("evaluate", {
 		board: gameBoard.value,
 		player: editSettings.value.is_maximizing ? Piece.Max : Piece.Min,
+	}).catch(err => {
+		toast.error(err)
+		return undefined;
 	});
+
+	if (!response) return;
 
 	if (response.boardScore == 1234) {
 		response.boardScore = Infinity;

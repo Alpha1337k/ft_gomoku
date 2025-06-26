@@ -66,32 +66,32 @@ async function loadHint() {
 
 	const timerStart = performance.now();
 
-	const calculationResponse = await gameState.ws.sendMessage<CalculationResponse>("calculate", {
+	await gameState.ws.sendMessage<CalculationResponse>("calculate", {
 		board: gameBoard.value,
 		depth: 5,
 		captures: captures.value,
 		player: currentPlayer.value,
-	});
+	}).then(res => {
+		const timerEnd = performance.now();
 
-	const timerEnd = performance.now();
+		toast.info(`Evaluation took ${(timerEnd - timerStart).toFixed(0)}ms.`)
 
-	toast.info(`Evaluation took ${(timerEnd - timerStart).toFixed(0)}ms.`)
+		hintLoading.value = false;
 
-	hintLoading.value = false;
+		const move = res.moves.shift()!;
 
-	const move = calculationResponse.moves.shift()!;
-
-	hint.value = move.position.x + move.position.y * 19;
+		hint.value = move.position.x + move.position.y * 19;
+	}).catch(err => toast.error(err))
 }
 
 async function loadInvalidMoves() {
 	invalidMoves.value = undefined;
-	const moves: { x: number; y: number }[] = await gameState.ws.sendMessage("inv_moves", {
+	await gameState.ws.sendMessage<{ x: number; y: number }[]>("inv_moves", {
 		board: gameBoard.value,
 		player: currentPlayer.value,
-	});
-
-	invalidMoves.value = moves.map((x) => x.x + x.y * 19);
+	})
+	.then(moves => invalidMoves.value = moves.map((x) => x.x + x.y * 19))
+	.catch(err => toast.error(err))
 }
 
 async function handleMoveSet(data: { position: number; player: Piece }) {
@@ -105,7 +105,12 @@ async function handleMoveSet(data: { position: number; player: Piece }) {
 		},
 		player: currentPlayer.value,
 		captures: captures.value,
+	}).catch(err => {
+		toast.error(err)
+		return undefined;
 	});
+
+	if (!newState) return;
 
 	if (currentPlayer.value == Piece.Max) {
 		moves.value.push({
