@@ -1,13 +1,20 @@
-use std::fmt;
-
 use serde_repr::*;
+use std::fmt;
+use thiserror::Error;
 
-#[derive(Clone, Copy, PartialEq, Deserialize_repr, Serialize_repr, Debug)]
+#[derive(Error, Debug, Clone, PartialEq)]
+pub enum PieceError {
+	#[error("Invalid piece value: {value}")]
+	InvalidValue { value: u64 },
+}
+
+#[derive(Clone, Copy, PartialEq, Deserialize_repr, Serialize_repr, Debug, Default)]
 #[repr(i8)]
 pub enum Piece {
+	#[default]
 	Empty = -1,
 	Max = 0,
-	Min = 1
+	Min = 1,
 }
 
 pub trait PieceWrap {
@@ -22,13 +29,13 @@ pub trait PieceWrap {
 }
 
 impl TryFrom<u64> for Piece {
-	type Error = ();
+	type Error = PieceError;
 
 	fn try_from(value: u64) -> Result<Self, Self::Error> {
 		match value {
 			x if x == Piece::Max as u64 => Ok(Piece::Max),
 			x if x == Piece::Min as u64 => Ok(Piece::Min),
-			_ => Err(())
+			_ => Err(PieceError::InvalidValue { value }),
 		}
 	}
 }
@@ -46,28 +53,16 @@ impl fmt::Display for Piece {
 
 impl PieceWrap for Piece {
 	fn is_max(&self) -> bool {
-		match self {
-			Piece::Max => true,
-			_ => false
-		}
+		matches!(self, Piece::Max)
 	}
 	fn is_min(&self) -> bool {
-		match self {
-			Piece::Min => true,
-			_ => false
-		}
+		matches!(self, Piece::Min)
 	}
 	fn is_piece(&self) -> bool {
-		match self {
-			Piece::Empty => false,
-			_ => true
-		}
+		!matches!(self, Piece::Empty)
 	}
 	fn is_empty(&self) -> bool {
-		match self {
-			Piece::Empty => true,
-			_ => false
-		}
+		matches!(self, Piece::Empty)
 	}
 	// check if is opposite player or empty
 	fn is_opposite(&self, p: &Piece) -> bool {
@@ -89,11 +84,7 @@ impl PieceWrap for Piece {
 		match self {
 			Piece::Empty => panic!(),
 			Piece::Max => Piece::Min,
-			Piece::Min => Piece::Max
+			Piece::Min => Piece::Max,
 		}
 	}
-}
-
-impl Default for Piece {
-    fn default() -> Self { Piece::Empty }
 }

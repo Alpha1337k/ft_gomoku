@@ -74,10 +74,19 @@ export class WebSocketAPI {
 		return await new Promise((res, rej) => {
 			const timeout = setTimeout(() => {
 				this.emitter.removeAllListeners(`${subject}:${request_id}`);
+				this.emitter.removeAllListeners(`error:${request_id}`);
 				rej(new Error("Server did not respond in time."));
 			}, 120_000);
 
+			const errorListener = this.emitter.once(`error:${request_id}`, (e) => {
+				this.emitter.removeAllListeners(`${subject}:${request_id}`);
+				console.log("ERR", e);
+				clearTimeout(timeout);
+				rej(e);
+			})
+
 			const listener = this.emitter.once(`${subject}:${request_id}`, (e) => {
+				this.emitter.removeAllListeners(`error:${request_id}`);
 				console.log("IN", e);
 				clearTimeout(timeout);
 				res(e);

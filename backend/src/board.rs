@@ -1,47 +1,66 @@
+use std::fmt;
 
-
-
-use std::{fmt};
-
+use crate::{
+	constants::{BOARD_DIM, BOARD_SIZE, BOARD_WIDTH},
+	piece::{Piece, PieceWrap},
+	position::Position,
+};
 use serde::Serialize;
 use serde_json::Value;
-use crate::{piece::{Piece, PieceWrap}, position::Position};
+use thiserror::Error;
 
 #[derive(Clone, Serialize)]
 pub struct Board {
 	data: Vec<Piece>,
 }
 
+#[derive(Error, Debug, Clone, PartialEq)]
+pub enum BoardError {
+	#[error("Board contains invalid value: {value}")]
+	InvalidValue { value: String },
+}
+
+impl Default for Board {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl Board {
 	pub fn new() -> Board {
-		Board { 
-			data: vec![Piece::Empty; 19 * 19],
+		Board {
+			data: vec![Piece::Empty; BOARD_SIZE],
 		}
 	}
 
-	pub fn from_map(board_map: &serde_json::Map<String, Value>) -> Board {
-		let mut board =  Board { 
-			data: vec![Piece::Empty; 19 * 19],
-		 };
+	pub fn from_map(board_map: &serde_json::Map<String, Value>) -> Result<Board, BoardError> {
+		let mut board = Board {
+			data: vec![Piece::Empty; BOARD_SIZE],
+		};
 
-		 for (key, value) in board_map {
-			let key_int = key.parse::<usize>().unwrap();
-			board.data[key_int] = value.as_u64().unwrap().try_into().unwrap_or_default();
+		for (key, value) in board_map {
+			let key_int = key
+				.parse::<usize>()
+				.map_err(|_| BoardError::InvalidValue { value: key.clone() })?;
+			board.data[key_int] = value
+				.as_u64()
+				.and_then(|v| v.try_into().ok())
+				.unwrap_or_default();
 		}
 
-		return board;
+		Ok(board)
 	}
 
 	pub fn get_diff(b1: &Board, b2: &Board) -> Vec<Position> {
 		let mut diffs = Vec::with_capacity(4);
-		
+
 		for pos in b1 {
 			if b1[&pos] != b2[&pos] {
 				diffs.push(pos);
 			}
 		}
 
-		return diffs;
+		diffs
 	}
 
 	pub fn get_captures(board: &Board, pos: Position, player: Piece) -> u8 {
@@ -59,16 +78,26 @@ impl Board {
 		let mut rv = 0;
 
 		for (i, direction) in directions.iter().enumerate() {
-			if pos.clone().relocate(direction[0][0], direction[0][1]).is_ok_and(|f| board[&f] == player.get_opposite()) &&
-				pos.clone().relocate(direction[1][0], direction[1][1]).is_ok_and(|f| board[&f] == player.get_opposite()) &&
-				pos.clone().relocate(direction[2][0], direction[2][1]).is_ok_and(|f| board[&f].is_equal(&player)) {
+			if pos
+				.clone()
+				.relocate(direction[0][0], direction[0][1])
+				.is_ok_and(|f| board[f] == player.get_opposite())
+				&& pos
+					.clone()
+					.relocate(direction[1][0], direction[1][1])
+					.is_ok_and(|f| board[f] == player.get_opposite())
+				&& pos
+					.clone()
+					.relocate(direction[2][0], direction[2][1])
+					.is_ok_and(|f| board[f].is_equal(&player))
+			{
 				rv |= 1u8 << i;
 			}
 		}
 
-		println!("GET CAPTURES RES: {}, P: {}", rv, pos);
+		// println!("GET CAPTURES RES: {}, P: {}", rv, pos);
 
-		return rv;
+		rv
 	}
 
 	pub fn set_move(&mut self, pos: Position, player: Piece, capture_map: Option<u8>) -> usize {
@@ -82,8 +111,7 @@ impl Board {
 			return 0;
 		}
 
-		let mut captures = capture_map.unwrap_or_else(|| Self::get_captures(&self, pos, player));
-		let captures_store = captures;
+		let mut captures = capture_map.unwrap_or_else(|| Self::get_captures(self, pos, player));
 
 		let mut capture_count = 0;
 
@@ -105,19 +133,22 @@ impl Board {
 				let map = maps[map_idx];
 				// println!("TAKING FOR IDX {} MOVE {}", map_idx, pos);
 
-				if pos.clone().relocate(map[0][0], map[0][1]).is_ok_and(|x| self[x] == player.get_opposite()) && 
-					pos.clone().relocate(map[1][0], map[1][1]).is_ok_and(|x| self[x] == player.get_opposite()) {
-					self[&pos.clone().relocate(map[0][0], map[0][1]).unwrap()] = Piece::Empty;
-					self[&pos.clone().relocate(map[1][0], map[1][1]).unwrap()] = Piece::Empty;
+				if pos
+					.clone()
+					.relocate(map[0][0], map[0][1])
+					.is_ok_and(|x| self[x] == player.get_opposite())
+					&& pos
+						.clone()
+						.relocate(map[1][0], map[1][1])
+						.is_ok_and(|x| self[x] == player.get_opposite())
+				{
+					self[pos.clone().relocate(map[0][0], map[0][1]).unwrap()] = Piece::Empty;
+					self[pos.clone().relocate(map[1][0], map[1][1]).unwrap()] = Piece::Empty;
 				} else {
-					println!("\nFAILED CAPTURE AT POS: {} ({})", pos, captures_store);
-					dbg!(player, map[0], map[1]);
-					println!("{}", self);
-					panic!();
+					panic!("Failed capture at {}. This should not happen: Player: {} {:?}", pos, player, map);
 				}
 
 				capture_count += 1;
-
 			}
 			captures >>= 1;
 			map_idx += 1;
@@ -127,67 +158,60 @@ impl Board {
 	}
 
 	pub fn get(&self, x: usize, y: usize) -> &Piece {
-		return &self.data[y * 19 + x];
-	}
-
-	pub fn len(&self) -> usize {
-		return self.data.len();
+		&self.data[y * BOARD_WIDTH + x]
 	}
 }
 
 impl std::ops::Index<&Position> for Board {
-    type Output = Piece;
+	type Output = Piece;
 
-    fn index(&self, idx: &Position) -> &Piece {
-		return &self.data[idx.x + idx.y * 19];
-    }
+	fn index(&self, idx: &Position) -> &Piece {
+		&self.data[idx.x + idx.y * BOARD_DIM]
+	}
 }
 
 impl std::ops::IndexMut<&Position> for Board {
-    fn index_mut(&mut self, idx: &Position) -> &mut Piece {
-		return &mut self.data[idx.x + idx.y * 19];
-    }
+	fn index_mut(&mut self, idx: &Position) -> &mut Piece {
+		&mut self.data[idx.x + idx.y * BOARD_DIM]
+	}
 }
 
 pub struct BoardIterator {
-	index: usize
+	index: usize,
 }
 
 impl<'a> IntoIterator for &'a Board {
-    type Item = Position;
-    type IntoIter = BoardIterator;
+	type Item = Position;
+	type IntoIter = BoardIterator;
 
-    fn into_iter(self) -> Self::IntoIter {
-        BoardIterator {
-            index: 0,
-        }
-    }
+	fn into_iter(self) -> Self::IntoIter {
+		BoardIterator { index: 0 }
+	}
 }
 
-
-impl<'a> Iterator for BoardIterator {
+impl Iterator for BoardIterator {
 	type Item = Position;
 
 	fn next(&mut self) -> Option<Self::Item> {
 		self.index += 1;
 
 		if self.index >= 362 {
-			return None;			
+			return None;
 		}
 
-		return Some(Position::from_u64(self.index - 1));
+		Some(Position::from_u64(self.index - 1))
 	}
 }
 
 impl fmt::Display for Board {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		write!(f, "  ")?;
-		for i in 0..19 {
+		for i in 0..BOARD_WIDTH {
 			write!(f, "{:3}", i)?;
 		}
-		for i in 0..19*19 {
-			if i % 19 == 0 {
-				write!(f, "\n{}:", ((i as f64 / 19.0).floor() as u8 + 65) as char )?;
+		for i in 0..BOARD_SIZE {
+			if i % BOARD_WIDTH == 0 {
+				write!(f, "\n{}:", ((i / BOARD_WIDTH) as u8 + 65) as char)?;
 			}
 			write!(f, " {} ", self.data[i])?;
 		}
